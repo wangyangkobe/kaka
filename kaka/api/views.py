@@ -15,6 +15,10 @@ def validateUserType(value):
     else:
         raise ValidationError('The userType field is {}, should be 0,1,2,3'.format(value))
     
+@api_blueprint.route('/', methods=['GET'])
+def test():
+    return "Hello world!"
+    
 @api_blueprint.route('/register', methods=['POST'])
 @verify_request_json
 @use_args({'User'       : fields.Str(required=True),
@@ -46,8 +50,7 @@ def register(args):
 @api_blueprint.route('/login', methods=['POST'])
 @verify_request_json
 @use_args({'User'       : fields.Str(required=True),
-           'Password'   : fields.Str(required=True),
-           'UserType'   : fields.Int(required=True, missing=1, validate=validateUserType)},
+           'Password'   : fields.Str(required=True)},
           locations = ('json',))
 def login(args):
     userName = args['User']
