@@ -27,7 +27,6 @@ def test():
            'RegisterTye': fields.Int(required=True, missing=0)},
           locations = ('json',))
 def register(args):
-    print args['UserType']    
     userName     = request.json.get('User', '')
     passWord     = request.json.get('Password', '')
     phone        = request.json.get('Phone', '')
@@ -49,8 +48,8 @@ def register(args):
     
 @api_blueprint.route('/login', methods=['POST'])
 @verify_request_json
-@use_args({'User'       : fields.Str(required=True),
-           'Password'   : fields.Str(required=True)},
+@use_args({'User'     : fields.Str(required=True),
+           'Password' : fields.Str(required=True)},
           locations = ('json',))
 def login(args):
     userName = args['User']
