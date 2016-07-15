@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-from kaka import app
-from flask_sqlalchemy import SQLAlchemy
+from kaka import db
 import datetime
 from flask_login import UserMixin, make_secure_token
 from werkzeug.security import generate_password_hash, check_password_hash
-
-db = SQLAlchemy(app)
 
 quanxian_table = db.Table('quanxian',
     db.Column('userId', db.Integer, db.ForeignKey('user.id')),
@@ -46,8 +43,10 @@ class User(db.Model, UserMixin):
         self.userMoney = userMoney
     
     def verifyUser(self):
-        if(self.userType not in [0, 1, 2, 3]):
-            raise ValueError('The userType field is {}, should be 0,1,2,3'.format(self.userType))
+        if self.regiserType == 0 and not self.phone:
+            raise ValueError('手机注册，Phone不能为空!')
+        if self.regiserType == 1 and not self.email:
+            raise ValueError('邮箱注册，Email不能为空!')
         return True
     
     def checkPassWord(self, password):
@@ -58,7 +57,6 @@ class User(db.Model, UserMixin):
     
     @staticmethod
     def getUserByUserName(username):
-        app.logger.info(username)
         return User.query.filter_by(userName=username).first()
     
     @staticmethod
@@ -73,11 +71,18 @@ class User(db.Model, UserMixin):
 class Machine(db.Model):
     __tablename__ = 'machine'
     id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    macAddress  = db.Column(db.String(100), nullable=False)
+    macAddress  = db.Column(db.String(100), nullable=False, unique=True)
     machineName = db.Column(db.String(100), nullable=False) #机器出厂时的设备名
     machineType = db.Column(db.Boolean, nullable=False, default=False) #指定设备为“可匿名访问” 
     machineMoney= db.Column(db.Float)
     adminPass   = db.Column(db.String(100)) #管理员密码
     userPass    = db.Column(db.String(100)) #用户密码
-    def __int__(self, macAddress):
+    
+    def __init__(self, macAddress, machineName):
         self.macAddress = macAddress
+        self.machineName = machineName
+        
+    @staticmethod
+    def getMachineByMac(macAddress):
+        return Machine.query.filter_by(macAddress=macAddress).first()
+        
