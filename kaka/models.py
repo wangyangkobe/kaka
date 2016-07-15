@@ -3,18 +3,7 @@ from kaka import db
 import datetime
 from flask_login import UserMixin, make_secure_token
 from werkzeug.security import generate_password_hash, check_password_hash
-
-quanxian_table = db.Table('quanxian',
-    db.Column('userId', db.Integer, db.ForeignKey('user.id')),
-    db.Column('machineId', db.Integer, db.ForeignKey('machine.id')),
-    db.Column('permission', db.Integer),
-    db.Column('reason', db.String(200)),
-    db.Column('startTime', db.DateTime, default=datetime.datetime.utcnow),
-    db.Column('endTime', db.DateTime),
-    db.Column('money', db.Float),
-    db.Column('machineName', db.String(200)), #用户对机器的命名
-    db.PrimaryKeyConstraint('userId', 'machineId')
-    )
+from sqlalchemy.schema import PrimaryKeyConstraint
     
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -30,6 +19,7 @@ class User(db.Model, UserMixin):
     regiserType = db.Column(db.Integer, unique=False)
     userMoney   = db.Column(db.Float)
     create_time = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    machines    = db.relationship('Machine',secondary='user_machine',backref=db.backref('user', lazy='dynamic'),lazy='dynamic')
     
     def __init__(self, username, password, phone = None, email = None, code = None, pushToken = None, userType = 0, registerType = 0, userMoney = 0.0):
         self.userName = username
@@ -73,16 +63,43 @@ class Machine(db.Model):
     id          = db.Column(db.Integer, primary_key=True, autoincrement=True)
     macAddress  = db.Column(db.String(100), nullable=False, unique=True)
     machineName = db.Column(db.String(100), nullable=False) #机器出厂时的设备名
-    machineType = db.Column(db.Boolean, nullable=False, default=False) #指定设备为“可匿名访问” 
+    machineType = db.Column(db.Integer, nullable=False, default=0) #指定设备为“可匿名访问” 
     machineMoney= db.Column(db.Float)
     adminPass   = db.Column(db.String(100)) #管理员密码
     userPass    = db.Column(db.String(100)) #用户密码
     
-    def __init__(self, macAddress, machineName):
-        self.macAddress = macAddress
-        self.machineName = machineName
+    #users = db.relationship("QuanXian", back_populates="user")
+    
+    def __init__(self, macAddress, machineName, machineType=0, machineMoney=0.0, adminPass=None, userPass=None):
+        self.macAddress   = macAddress
+        self.machineName  = machineName
+        self.machineType  = machineType
+        self.machineMoney = machineMoney
+        self.adminPass    = adminPass
+        self.userPass     = userPass
         
     @staticmethod
     def getMachineByMac(macAddress):
         return Machine.query.filter_by(macAddress=macAddress).first()
+    
+    def toJson(self):
+        return dict((c.name,
+                     getattr(self, c.name))
+                     for c in self.__table__.columns)
         
+class QuanXian(db.Model):
+    __tablename__  = 'user_machine'
+    __table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
+    userId     = db.Column(db.Integer, db.ForeignKey('user.id'))
+    machineId  = db.Column(db.Integer, db.ForeignKey('machine.id'))
+    permission = db.Column(db.Integer)
+    reason     = db.Column(db.String(200))
+    startTime  = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    endTime    = db.Column(db.DateTime)
+    money      = db.Column(db.Float)
+    machineName= db.Column(db.String(200)) #用户对机器的命名
+ 
+    def toJson(self):
+        return dict((c.name,
+                     getattr(self, c.name))
+                     for c in self.__table__.columns)
