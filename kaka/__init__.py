@@ -12,6 +12,7 @@ db = SQLAlchemy(app)
 
 from kaka.api.views import api_blueprint
 from kaka.admin.views import admin_blueprint
+from kaka.user.views import user_blueprint
 
 # Return validation errors as JSON
 @app.errorhandler(422)
@@ -22,3 +23,4 @@ def handle_request_parsing_error(err):
 
 app.register_blueprint(api_blueprint, url_prefix='/api')
 app.register_blueprint(admin_blueprint, url_prefix='/admin')
+app.register_blueprint(user_blueprint, url_prefix='/user')

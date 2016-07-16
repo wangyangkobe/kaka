@@ -1,0 +1,8 @@
+eclipse.preferences.version=1
+encoding//kaka/__init__.py=utf-8
+encoding//kaka/admin/views.py=utf-8
+encoding//kaka/api/views.py=utf-8
+encoding//kaka/decorators.py=utf-8
+encoding//kaka/models.py=utf-8
+encoding//kaka/user/views.py=utf-8
+encoding/run_server.py=utf-8

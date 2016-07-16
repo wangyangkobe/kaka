@@ -21,26 +21,18 @@ def test():
     
 @api_blueprint.route('/register', methods=['POST'])
 @verify_request_json
-@use_args({'User'       : fields.Str(required=True),
-           'Password'   : fields.Str(required=True),
-           'UserType'   : fields.Int(required=True, missing=1, validate=validateUserType),
-           'RegisterTye': fields.Int(required=True, missing=0)},
+@use_args({'UserName'    : fields.Str(required=True),
+           'Password'    : fields.Str(required=True),
+           'UserType'    : fields.Int(required=True, missing=1, validate=validateUserType),
+           'RegisterType': fields.Int(required=True, missing=0)},
           locations = ('json',))
 def register(args):
-    userName     = request.json.get('User', '')
-    passWord     = request.json.get('Password', '')
-    phone        = request.json.get('Phone', '')
-    email        = request.json.get('Email', '')
-    code         = request.json.get('Code', '')
-    pushToken    = request.json.get('PushToken', '')
-    userType     = args['UserType']  
-    registerType = args['RegisterTye']
-    user = models.User(userName, passWord, phone, email, code, pushToken, userType=userType, registerType=registerType)
     try:
+        user = models.User(**request.get_json())
         user.verifyUser()
         db.session.add(user)
         db.session.commit()
-        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '注册成功!'}), 200
+        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '注册成功!', 'User': user.toJson()}), 200
     except ValueError, error:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': error.message}), 400
     except Exception, error:
@@ -48,25 +40,37 @@ def register(args):
     
 @api_blueprint.route('/login', methods=['POST'])
 @verify_request_json
-@use_args({'User'     : fields.Str(required=True),
-           'Password' : fields.Str(required=True)},
+@use_args({'Password'     : fields.Str(required=True),
+           'Phone'        : fields.Str(missing=''),
+           'Email'        : fields.Str(missing=''),
+           'RegisterType' : fields.Int(required=True, validate=lambda value : value in [0, 1])},
           locations = ('json',))
 def login(args):
-    userName = args['User']
     passWord = args['Password']
-    
-    user = models.User.getUserByUserName(userName)
-    if user:
-        if user.checkPassWord(passWord):
-            user.token = user.get_auth_token()
-            user.pushToken = request.json.get('PushToken', '')
-            db.session.merge(user)
-            db.session.commit()
-            return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '登录成功!', 'Token': user.token}), 200
-        else:
-            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '密码错误'}), 400 
+    registerType = args['RegisterType']
+    phone = args['Phone']
+    email = args['Email']
+    if registerType == 0 and not phone:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "Phone不能为空!"}), 400
+    if registerType == 1 and not email:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "Email不能为空!"}), 400
+    if registerType == 0:
+        user = models.User.query.filter_by(phone=phone).first()
     else:
-        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '输入的用户名不存在'}), 400
+        user = models.User.query.filter_by(email=email).first()
+    
+    if not user:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '输入的Phone或Email不存在!'}), 400
+    
+    if user.checkPassWord(passWord):
+        user.token = user.get_auth_token()
+        user.pushToken = request.json.get('PushToken', '')
+        db.session.merge(user)
+        db.session.commit()
+        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '登录成功!', 'User': user.toJson()}), 200
+    else:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '密码错误'}), 400 
+        
 
 def verifyMachines(machines):
     if isinstance(machines, list):

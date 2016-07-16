@@ -8,36 +8,37 @@ from webargs.core import ValidationError
     
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
-    #id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
-    userName    = db.Column(db.String(80), unique=True, nullable=False, primary_key=True)
-    passWord    = db.Column(db.String(80), nullable=False)
-    phone       = db.Column(db.String(80), unique=True)
-    email       = db.Column(db.String(80), unique=True)
-    userType    = db.Column(db.Integer, nullable=False)
-    code        = db.Column(db.String(80), unique=False)
-    pushToken   = db.Column(db.String(80))
-    token       = db.Column(db.String(128))
-    regiserType = db.Column(db.Integer, unique=False)
-    userMoney   = db.Column(db.Float)
-    create_time = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    id           = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
+    userName     = db.Column(db.String(80), nullable=False)
+    passWord     = db.Column(db.String(80), nullable=False)
+    phone        = db.Column(db.String(80), unique=True)
+    email        = db.Column(db.String(80), unique=True)
+    userType     = db.Column(db.Integer,    nullable=False)
+    verifyCode   = db.Column(db.String(80), unique=False)
+    pushToken    = db.Column(db.String(80))
+    token        = db.Column(db.String(128))
+    registerType = db.Column(db.Integer, unique=False)
+    userMoney    = db.Column(db.Float)
+    create_time  = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     
     quanXians   = db.relationship('QuanXian', cascade="all")
     
-    def __init__(self, username, password, phone = None, email = None, code = None, pushToken = None, userType = 0, registerType = 0, userMoney = 0.0):
-        self.userName = username
-        self.passWord = generate_password_hash(password)
-        self.phone = phone
-        self.email = email
-        self.code = code
-        self.pushToken = pushToken
-        self.userType = userType
-        self.regiserType = registerType
-        self.userMoney = userMoney
-    
+    def __init__(self, **kargs):
+        print kargs
+        self.userName = kargs.get('UserName', "")
+        self.passWord = generate_password_hash(kargs.get('Password'))
+        self.phone    = kargs.get('Phone', '')
+        self.email    = kargs.get('Email', '')
+        self.verifyCode = kargs.get('VerifyCode', '')
+        self.pushToken  = kargs.get('PushToken', '')
+        self.userType   = kargs.get('UserType', 0)
+        self.registerType = kargs.get('RegisterType', 0)
+        self.userMoney   = kargs.get('UserMoney', 0.0)
+        
     def verifyUser(self):
-        if self.regiserType == 0 and not self.phone:
+        if self.registerType == 0 and not self.phone:
             raise ValueError('手机注册，Phone不能为空!')
-        if self.regiserType == 1 and not self.email:
+        if self.registerType == 1 and not self.email:
             raise ValueError('邮箱注册，Email不能为空!')
         return True
     
@@ -68,8 +69,8 @@ class User(db.Model, UserMixin):
         
 class Machine(db.Model):
     __tablename__ = 'machine'
-    #id          = db.Column(db.Integer, autoincrement=True, nullable=False)
-    macAddress  = db.Column(db.String(100), primary_key=True, nullable=False, unique=True)
+    id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
+    macAddress  = db.Column(db.String(100), nullable=False, unique=True)
     machineName = db.Column(db.String(100), nullable=False) #机器出厂时的设备名
     machineType = db.Column(db.Integer, nullable=False, default=0) #指定设备为“可匿名访问” 
     machineMoney= db.Column(db.Float)
@@ -99,19 +100,19 @@ class Machine(db.Model):
 class QuanXian(db.Model):
     __tablename__  = 'user_machine'
     __table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
-    userId     = db.Column(db.String(80),  db.ForeignKey('user.userName'))
-    machineId  = db.Column(db.String(100), db.ForeignKey('machine.macAddress', ondelete='CASCADE'))
-    permission = db.Column(db.Integer, default=0)
+    userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
+    machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete='CASCADE'))
+    permission = db.Column(db.Integer, default=0) #0代表管理员未查看该权限申请请求，1代表已经询问管理员，2代表管理员已经处理
     reason     = db.Column(db.String(200))
     startTime  = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     endTime    = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     money      = db.Column(db.Float, default=0.0)
     machineName= db.Column(db.String(200)) #用户对机器的命名
  
-    def __init__(self, userId, machineId, persion=0, reason=None, startTime=datetime.datetime.utcnow(), endTime=datetime.datetime.utcnow(), money = 0, machineName=0):
+    def __init__(self, userId, machineId, permission=0, reason=None, startTime=datetime.datetime.utcnow(), endTime=datetime.datetime.utcnow(), money = 0, machineName=0):
         self.userId = userId
         self.machineId = machineId
-        self.permission = persion
+        self.permission = permission
         self.reason = reason
         self.startTime = startTime
         self.endTime = endTime
