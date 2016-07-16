@@ -67,10 +67,47 @@ def login(args):
             return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '密码错误'}), 400 
     else:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '输入的用户名不存在'}), 400
+
+def verifyMachines(machines):
+    if isinstance(machines, list):
+        for machine in machines:
+            if isinstance(machine, dict) and machine.has_key('Mac'):
+                return True
+            else:
+                raise ValidationError('输入的Machines字符不正确 ！')
+    else:
+        raise ValidationError('输入的Machines字符不正确 ！')
     
 @api_blueprint.route('/delMachines',  methods=['POST'])
 @verify_request_json
+@use_args({'User'     : fields.Str(required=True, validate=models.User.checkUserNameExist),
+           'Token'    : fields.Str(required=True),
+           'Machines' : fields.Nested({'Mac' : fields.Str(require=True)}, validate=verifyMachines, many=True)},
+          locations = ('json',))
 @verify_request_token
-def delMachines():
-    userName = request.json.get('User', '')
-    return jsonify(userName)
+def delMachines(args):
+    user = models.User.getUserByUserName(args.get('User', ''))
+    for machine in args.get('Machines'):
+        if machine.get('Mac') == "All":
+            for quanxian in user.quanXians:
+                machines = models.Machine.query.filter_by(macAddress=quanxian.machineId)
+                map(lambda machine : db.session.delete(machine), machines)
+        else:
+            for quanxian in models.QuanXian.query.filter_by(userId=user.userName, machineId=machine.get('Mac')):
+                machines = models.Machine.query.filter_by(macAddress=quanxian.machineId)
+                map(lambda machine : db.session.delete(machine), machines)
+                print quanxian.machineId
+        db.session.commit()
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
+        
+    print args
+    if args.get('Machines') == 'All':
+        print user.quanXians
+        map(lambda machine : db.session.delete(machine), user.machines)
+    else:
+        needDeletes = request.get_json().get("Machines", [])
+        print needDeletes
+        result = [i for i in user.machines for j in needDeletes if i.macAddress == j['mac']]
+        map(lambda machine : db.session.delete(machine), result)
+    db.session.commit()
+    return jsonify(user.toJson())
