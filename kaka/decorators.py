@@ -15,12 +15,12 @@ def verify_request_json(func):
 def verify_request_token(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
-        userName = request.json.get('User', '')
+        userId   = request.json.get('UserId', '')
         token    = request.json.get('Token', '')
-        if userName and token and models.User.checkUserToken(userName, token):
+        if userId and token and models.User.checkUserToken(userId, token):
             return func(*args, **kwargs)
-        elif not userName:
-            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '请求的paylod中无userName'}), 400
+        elif not userId:
+            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '请求的paylod中无userId'}), 400
         elif not token:
             return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '请求的paylod中无Token'}), 400
         else:

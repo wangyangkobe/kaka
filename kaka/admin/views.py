@@ -7,83 +7,60 @@ from webargs import fields
 from webargs.flaskparser import use_args
 
 admin_blueprint = Blueprint('admin', __name__)
-
     
 @admin_blueprint.route('/addMachines', methods=['POST'])
 @verify_request_json
-@use_args({'User'     : fields.Str(required=True, validate=models.User.checkUserNameExist),
+@use_args({'UserId'   : fields.Int(required=True),
            'Token'    : fields.Str(required=True),
            'Machines' : fields.Nested({"Mac"         : fields.Str(required=True),
                                        "MachineName" : fields.Str(required=True),
-                                       "MachineType" : fields.Int(missing=0)}, required=True, many=True)
+                                       "MachineType" : fields.Int(missing=0)}, required=True)
            },
           locations = ('json',))
 @verify_request_token
 def addMachines(args):
-    userName = args.get("User", '')
-    machines = request.get_json().get("Machines", [])
-    user = models.User.getUserByUserName(userName)
-    macAddesses = []
-    try:
-        for machine in machines:
-            macAddress = machine.get('Mac')
-            result = models.Machine.getMachineByMac(macAddress)
-            if result:
-                macAddesses.append(result.macAddress)
-            else:
-                machineName = machine.get("MachineName", '')
-                machineType = machine.get("MachineType", 0)
-                machineMoney= machine.get("MachineMoney", 0)
-                adminPass   = machine.get("AdminPass", '')
-                userPass    = machine.get("UserPass", '')
-                result = models.Machine(macAddress, 
-                                        machineName, 
-                                        machineType  = machineType, 
-                                        machineMoney = machineMoney, 
-                                        adminPass    = adminPass, 
-                                        userPass     = userPass)
-                db.session.add(result)
-                db.session.flush()
-                macAddesses.append(result.macAddress)
-        map(lambda address : db.session.merge(models.QuanXian(user.userName, address)), macAddesses)
+    userId = args.get("UserId")
+    user = models.User.query.get(userId)
+    if not user:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "UserId {} does't exist".format(userId)}), 400
+    machine = request.get_json().get("Machines")
+    print machine
+    result = models.Machine.getMachineByMac(machine.get('Mac', ''))
+    if not result:
+        machine = models.Machine(**machine)
+        db.session.add(machine)
+        db.session.flush()
+        db.session.add(models.QuanXian(user.id, machine.id, permission=1))
         db.session.commit()
-        
-        return  jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
-    except Exception, error:
-        return jsonify({'Status': 'Failed', 'StatusCode':-2, 'Msg': error.message}), 400
-
+        return  jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!', 'Machine': machine.toJson()}), 200
+    else:
+        return  jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作失败，改机器已被添加!'}), 400
 
 @admin_blueprint.route('/addUserPermission', methods=['POST'])
 @verify_request_json
-@use_args({'User'     : fields.Str(required=True, validate=models.User.checkUserNameExist),
+@use_args({'UserId'   : fields.Int(required=True),
            'Token'    : fields.Str(required=True),
-           'UserPermissionList' : fields.Nested({'Mac'        : fields.Str(required=True),
-                                                 'User'       : fields.Str(required=True),
-                                                 'Permission' : fields.Int(required=True)}, required=True, many=True)},
+           'UserList' : fields.Nested({'Mac'        : fields.Str(required=True),
+                                       'UserId'     : fields.Int(required=True),
+                                       'Permission' : fields.Int(required=True)}, required=True)},
           locations = ('json',))
 @verify_request_token
 def addUserPermission(args):
-    userPermissonList = request.get_json().get("UserPermissionList", [])
-    errorDetail = []
-    for userPermission in userPermissonList:
-        userName   = userPermission.get('User')
-        macAddress = userPermission.get('Mac')
-        permission = userPermission.get('Permission')
-        if not models.User.getUserByUserName(userName):
-            errorDetail.append({'Status' :  'Success', 'StatusCode':0, 'Msg' : '用户{}不存在!'.format(userName)})
-            break
-        if not models.Machine.getMachineByMac(macAddress):
-            errorDetail.append({'Status' :  'Success', 'StatusCode':0, 'Msg' : 'Mac{}不存在!'.format(userName)})
-            break
-        quanXians = models.QuanXian.query.filter_by(userId=userName, machineId=macAddress)
-        if quanXians.count() == 0:
-            db.session.add(models.QuanXian(userId=userName, machineId=macAddress, permission=permission))
-        for quanXian in quanXians:
-            quanXian.permission = permission
-            db.session.merge(quanXian)
+    userList = request.get_json().get("UserList")
+    userId = userList.get('UserId')
+    user = models.User.query.get(userId)
+    if not user:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "UserId {} does't exist".format(userId)}), 400
+    macAddress = userList.get('Mac', '')
+    machine = models.Machine.getMachineByMac(macAddress)
+    if not machine:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
+    permisson = userList.get('Permission')
+    quanXian = models.QuanXian(userId, machine.id, permission=permisson)
+    db.session.merge(quanXian)
     db.session.commit()
-    return  jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!', 'ErrorDetail': errorDetail}), 200
-
+    return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
+    
 @admin_blueprint.route('/getUserLog', methods=['POST'])
 @verify_request_json
 @use_args({'User'     : fields.Str(required=True, validate=models.User.checkUserNameExist),
@@ -145,28 +122,25 @@ def getMachinePermissionDetail(args):
 
 @admin_blueprint.route('/updateUserPermission', methods=['POST'])
 @verify_request_json
-@use_args({'User'     : fields.Str(required=True, validate=models.User.checkUserNameExist),
+@use_args({'UserId'   : fields.Int(required=True),
            'Token'    : fields.Str(required=True),
            'UserPermissionList' : fields.Nested({'Mac'        : fields.Str(required=True),
-                                                 'User'       : fields.Str(required=True),
-                                                 'Permission' : fields.Int(required=True)}, required=True, many=True)},
+                                                 'UserId'     : fields.Str(required=True),
+                                                 'Permission' : fields.Int(required=True)}, required=True)},
           locations = ('json',))
 @verify_request_token
 def updateUserPermission(args):
-    userPermissonList = request.get_json().get("UserPermissionList", [])
-    for userPermission in userPermissonList:
-        userName   = userPermission.get('User')
-        macAddress = userPermission.get('Mac')
-        permission = userPermission.get('Permission')
-        if not models.User.getUserByUserName(userName):
-            return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '用户{}不存在!'.format(userName)}), 400
-        if not models.Machine.getMachineByMac(macAddress):
-            return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : 'Mac{}不存在!'.format(userName)}), 400
-        quanXians = models.QuanXian.query.filter_by(userId=userName, machineId=macAddress)
-        if quanXians.count() == 0:
-            return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '用户{}没有使用设备{}!'.format(userName, macAddress)}), 400
-        for quanXian in quanXians:
-            quanXian.permission = permission
-            db.session.merge(quanXian)
+    userPermissonList = request.get_json().get("UserPermissionList")
+    userId = userPermissonList.get('UserId')
+    user = models.User.query.get(userId)
+    if not user:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "UserId {} does't exist".format(userId)}), 400
+    macAddress = userPermissonList.get('Mac', '')
+    machine = models.Machine.getMachineByMac(macAddress)
+    if not machine:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
+    permisson = userPermissonList.get('Permission')
+    quanXian = models.QuanXian(userId, machine.id, permission=permisson)
+    db.session.merge(quanXian)
     db.session.commit()
-    return  jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
+    return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200

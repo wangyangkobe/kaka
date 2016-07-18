@@ -24,7 +24,6 @@ class User(db.Model, UserMixin):
     quanXians   = db.relationship('QuanXian', cascade="all")
     
     def __init__(self, **kargs):
-        print kargs
         self.userName = kargs.get('UserName', "")
         self.passWord = generate_password_hash(kargs.get('Password'))
         self.phone    = kargs.get('Phone', '')
@@ -53,8 +52,8 @@ class User(db.Model, UserMixin):
         return User.query.filter_by(userName=username).first()
     
     @staticmethod
-    def checkUserToken(username, token):
-        return User.query.filter_by(userName=username, token=token).count() > 0
+    def checkUserToken(userid, token):
+        return User.query.filter_by(id=userid, token=token).count() > 0
     
     @staticmethod
     def checkUserNameExist(userName):
@@ -80,13 +79,13 @@ class Machine(db.Model):
     #users = db.relationship("QuanXian", back_populates="user")
     quanXians   = db.relationship('QuanXian', cascade="all, delete-orphan")
     
-    def __init__(self, macAddress, machineName, machineType=0, machineMoney=0.0, adminPass=None, userPass=None):
-        self.macAddress   = macAddress
-        self.machineName  = machineName
-        self.machineType  = machineType
-        self.machineMoney = machineMoney
-        self.adminPass    = adminPass
-        self.userPass     = userPass
+    def __init__(self, **kargs):
+        self.macAddress   = kargs.get('Mac', "")
+        self.machineName  = kargs.get('MachineName', "")
+        self.machineType  = kargs.get('MachineType', 0)
+        self.machineMoney = kargs.get('MachineMoney', 0.0)
+        self.adminPass    = kargs.get('AdminPass', "")
+        self.userPass     = kargs.get('UserPass', "")
         
     @staticmethod
     def getMachineByMac(macAddress):
@@ -102,13 +101,13 @@ class QuanXian(db.Model):
     __table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
     userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
     machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete='CASCADE'))
-    permission = db.Column(db.Integer, default=0) #0代表管理员未查看该权限申请请求，1代表已经询问管理员，2代表管理员已经处理
+    permission = db.Column(db.Integer, default=0) 
     reason     = db.Column(db.String(200))
     startTime  = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     endTime    = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     money      = db.Column(db.Float, default=0.0)
     machineName= db.Column(db.String(200)) #用户对机器的命名
- 
+    
     def __init__(self, userId, machineId, permission=0, reason=None, startTime=datetime.datetime.utcnow(), endTime=datetime.datetime.utcnow(), money = 0, machineName=0):
         self.userId = userId
         self.machineId = machineId
@@ -123,3 +122,39 @@ class QuanXian(db.Model):
         return dict((c.name,
                      getattr(self, c.name))
                      for c in self.__table__.columns)
+        
+class ShenQing(db.Model):
+    __tablename__  = 'shen_qing'
+    __table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
+    userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
+    machineId  = db.Column(db.Integer, db.ForeignKey('machine.id'))
+    statusCode = db.Column(db.Integer, default=0)  #0代表管理员未查看该权限申请请求，-1表示拒绝该申请，1表示通过该申请
+    needPermission = db.Column(db.Integer, default=0)
+    reason     = db.Column(db.String(200))
+    time       = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    
+    def __init__(self, userId, machineId, statusCode=0, needPermission=-1, reason='', time=datetime.datetime.utcnow()):
+        self.userId = userId
+        self.machineId = machineId
+        self.statusCode = statusCode
+        self.needPermission = needPermission
+        self.reason = reason
+        self.time = time
+    
+    def toJson(self):
+        return dict((c.name,
+                     getattr(self, c.name))
+                     for c in self.__table__.columns)
+class MachineUsage(db.Model):
+    __tablename__  = 'machine_usage'
+    __table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
+    userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
+    machineId  = db.Column(db.Integer, db.ForeignKey('machine.id'))
+    startTime  = db.Column(db.DateTime)
+    endTime    = db.Column(db.DateTime)
+    
+    def __init__(self, userId, machineId, startTime=None, endTime=None):
+        self.userId = userId
+        self.machineId = machineId
+        self.startTime = startTime
+        self.endTime = endTime
