@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, jsonify
-from kaka.models import User, QuanXian, ShenQing, Machine
+from kaka.models import User, QuanXian, ShenQing, Machine, MachineUsage
 from kaka import db
 from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
@@ -43,12 +43,15 @@ def applyPermission(args):
           locations = ('json',))
 @verify_request_token
 def infoUseMachine(args):
-    machine = models.Machine.getMachineByMac(args.get('Mac', ''))
+    machine = Machine.getMachineByMac(args.get('Mac', ''))
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    machineUsage = models.MachineUsage.query.filter_by(userId=args.get('UserId'), machineId=machine.id).first()
-    machineUsage.startTime=datetime.utcnow() 
-    db.session.merge(machineUsage)
+    machineUsage = MachineUsage.query.filter_by(userId=args.get('UserId'), machineId=machine.id).first()
+    if machineUsage:
+        machineUsage.startTime=datetime.utcnow() 
+        db.session.merge(machineUsage)
+    else:
+        db.session.add(MachineUsage(userId=args.get('UserId'), machineId=machine.id, startTime=datetime.utcnow()))
     db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
 
@@ -61,14 +64,17 @@ def infoUseMachine(args):
           locations = ('json',))
 @verify_request_token
 def infoStopUseMachine(args):
-    machine = models.Machine.getMachineByMac(args.get('Mac', ''))
+    machine = Machine.getMachineByMac(args.get('Mac', ''))
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    machineUsage = models.MachineUsage.query.filter_by(userId=args.get('UserId'), machineId=machine.id).first()
-    machineUsage.endTime=datetime.utcnow() 
-    db.session.merge(machineUsage)
-    db.session.commit()
-    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
+    machineUsage = MachineUsage.query.filter_by(userId=args.get('UserId'), machineId=machine.id).first()
+    if machineUsage:
+        machineUsage.endTime=datetime.utcnow() 
+        db.session.merge(machineUsage)
+        db.session.commit()
+        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
+    else:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '您还为使用该机器!'}), 400
 
 @user_blueprint.route('/queryMachines', methods=['POST'])
 @verify_request_json
