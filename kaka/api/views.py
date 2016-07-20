@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, request, jsonify
-from kaka import models
+from kaka.models import User
 from kaka import db
 from kaka.decorators import verify_request_json, verify_request_token
-from webargs import fields, validate
+from webargs import fields
 from webargs.flaskparser import use_args
 from webargs.core import ValidationError
 
@@ -23,12 +23,13 @@ def test():
 @verify_request_json
 @use_args({'UserName'    : fields.Str(required=True),
            'Password'    : fields.Str(required=True),
-           'UserType'    : fields.Int(required=True, missing=1, validate=validateUserType),
-           'RegisterType': fields.Int(required=True, missing=0)},
+           #'UserType'    : fields.Int(required=True, missing=1, validate=validateUserType),
+           'RegisterType': fields.Int(required=True, missing=0, validate=lambda value : value in [0, 1])},
           locations = ('json',))
 def register(args):
     try:
-        user = models.User(**request.get_json())
+        user = User(**request.get_json())
+        print user.toJson()
         user.verifyUser()
         db.session.add(user)
         db.session.commit()
@@ -55,9 +56,9 @@ def login(args):
     if registerType == 1 and not email:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "Email不能为空!"}), 400
     if registerType == 0:
-        user = models.User.query.filter_by(phone=phone).first()
+        user = User.query.filter_by(phone=phone).first()
     else:
-        user = models.User.query.filter_by(email=email).first()
+        user = User.query.filter_by(email=email).first()
     
     if not user:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '输入的Phone或Email不存在!'}), 400
@@ -70,6 +71,18 @@ def login(args):
         return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '登录成功!', 'User': user.toJson()}), 200
     else:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '密码错误'}), 400 
+
+
+
+
+
+
+
+
+
+
+
+
         
 
 def verifyMachines(machines):
@@ -84,7 +97,7 @@ def verifyMachines(machines):
     
 @api_blueprint.route('/delMachines',  methods=['POST'])
 @verify_request_json
-@use_args({'User'     : fields.Str(required=True, validate=models.User.checkUserNameExist),
+@use_args({'User'     : fields.Str(required=True),
            'Token'    : fields.Str(required=True),
            'Machines' : fields.Nested({'Mac' : fields.Str(require=True)}, validate=verifyMachines, many=True)},
           locations = ('json',))
