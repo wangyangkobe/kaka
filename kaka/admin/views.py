@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, request, jsonify
-from kaka.models import User, Machine, QuanXian, MachineUsage
-from kaka import db
+from kaka.models import User, Machine, QuanXian, MachineUsage, ShenQing
+from kaka import db, logger
 from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
 from webargs.flaskparser import use_args
@@ -109,10 +109,49 @@ def getMachineLog(args):
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MachineLog': machineLog}), 200
 
 
+@admin_blueprint.route('/getNewRequest', methods=['POST'])
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True)},
+          locations = ('json',))
+@verify_request_token
+def getNewRequest(args):
+    requestList = []
+    for shenQing in ShenQing.query.filter_by(statusCode=0):
+        result = shenQing.toJson()
+        result.pop('id', None)
+        requestList.append(result)
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'Request': requestList}), 200
 
 
-
-
+@admin_blueprint.route('/getMachinePermissionDetail', methods=['POST'])
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True),
+           'MacList'  : fields.Nested({'Mac' : fields.Str(required=True)}, many=True, required=True)
+           },
+          locations = ('json',))
+@verify_request_token
+def getMachinePermissionDetail(args):
+    userId = args.get('UserId')
+    ownMachines = QuanXian.query.filter(QuanXian.userId == userId).filter(QuanXian.permission != 0)
+    ownMachineIds = [element.machineId for element in ownMachines]
+    logger.info("getMachinePermissionDetail ownMachineIds = {}".format(ownMachineIds))
+    macList = args.get('MacList')
+    permissonDetail = []
+    for mac in macList:
+        if mac.get('Mac') == 'All':
+            for element in QuanXian.query.filter(QuanXian.machineId.in_(ownMachineIds)):
+                permissonDetail.append({'User': element.userId, 'Permission': element.permission, 'Mac': element.machineId})
+        else:
+            machine = Machine.query.filter_by(macAddress=mac.get('Mac')).first()
+            if not machine:
+                return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,机器{}不存在!'.format(mac.get('Mac'))}), 400
+            if machine.id not in ownMachineIds:
+                return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,您不是机器{}的管理员!'.format(mac.get('Mac'))}), 400
+            for element in QuanXian.query.filter_by(machineId=machine.id):
+                permissonDetail.append({'User': element.userId, 'Permission': element.permission, 'Mac': element.machineId})
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': permissonDetail})
 
 
 
@@ -143,22 +182,3 @@ def getUserLog(args):
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserLog': userLog})
 
 
-@admin_blueprint.route('/getMachinePermissionDetail', methods=['POST'])
-@verify_request_json
-@use_args({'User'     : fields.Str(required=True),
-           'Token'    : fields.Str(required=True),
-           'MacList'  : fields.Nested({'Mac' : fields.Str(required=True)}, many=True, required=True)
-           },
-          locations = ('json',))
-@verify_request_token
-def getMachinePermissionDetail(args):
-    macList = args.get('MacList')
-    permissonDetail = []
-    for mac in macList:
-        if mac.get('Mac') == 'All':
-            for element in models.QuanXian.query.all():
-                permissonDetail.append({'User': element.userId, 'Permission': element.permission, 'Mac': element.machineId})
-        else:
-            for element in models.QuanXian.query.filter_by(machineId=mac.get('Mac')):
-                permissonDetail.append({'User': element.userId, 'Permission': element.permission, 'Mac': element.machineId})
-    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': permissonDetail})

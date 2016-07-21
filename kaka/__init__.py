@@ -8,7 +8,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:root1234@localhost/kaka_db
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 app.secret_key = 'super secret string'
 db = SQLAlchemy(app)
-
+logger = app.logger
 
 from kaka.api.views import api_blueprint
 from kaka.admin.views import admin_blueprint
