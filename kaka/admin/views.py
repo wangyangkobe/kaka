@@ -151,34 +151,26 @@ def getMachinePermissionDetail(args):
                 return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,您不是机器{}的管理员!'.format(mac.get('Mac'))}), 400
             for element in QuanXian.query.filter_by(machineId=machine.id):
                 permissonDetail.append({'User': element.userId, 'Permission': element.permission, 'Mac': element.machineId})
-    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': permissonDetail})
-
-
-
-
-
-
-
-
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': permissonDetail}), 200
 
     
 @admin_blueprint.route('/getUserLog', methods=['POST'])
 @verify_request_json
-@use_args({'User'     : fields.Str(required=True),
-           'Token'    : fields.Str(required=True),
-           'UserList' : fields.Nested({'User' : fields.Str(required=True)}, many=True, required=True)
-           },
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True)},
           locations = ('json',))
 @verify_request_token
 def getUserLog(args):
-    userList = args.get('UserList')
+    userList = request.get_json().get('UserList', [])
     userLog = []
     for user in userList:
-        if user.get('User') == 'All':
-            userLog.extend([element.toJson() for element in models.QuanXian.query.all()])
+        if user.get('UserId') == 'All':
+            userLog.extend([element.toJson() for element in MachineUsage.query.all()])
         else:
-            for quanXian in models.QuanXian.query.filter_by(userId=user.get('User')):
+            if not User.query.get(user.get('UserId')):
+                return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,用户id={}不存在!'.format(user.get('UserId'))}), 400
+            for quanXian in MachineUsage.query.filter_by(userId=user.get('UserId')):
                 userLog.append(quanXian.toJson())
-    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserLog': userLog})
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserLog': userLog}), 200
 
 
