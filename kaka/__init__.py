@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, jsonify
+import os
 from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
@@ -9,6 +10,20 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 app.secret_key = 'super secret string'
 db = SQLAlchemy(app)
 logger = app.logger
+
+# toList接口每个用户返回用户状态开关,true：打开 false：关闭
+os.environ['needDetails'] = 'true'
+
+# http的域名
+HOST = 'http://sdk.open.api.igexin.com/apiex.htm'
+
+APPKEY = "Ljo9P2kC5A93MhCh6BhnC7"
+APPID = "DTTWD485HI6NNpfL0afH25"
+MASTERSECRET = "sEat0K6eGkAMdatKEfnzi6"
+CID = ""
+Alias = '请输入别名'
+DEVICETOKEN = ""
+
 
 from kaka.api.views import api_blueprint
 from kaka.admin.views import admin_blueprint
