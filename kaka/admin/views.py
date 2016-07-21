@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, request, jsonify
-from kaka.models import User, Machine, QuanXian
+from kaka.models import User, Machine, QuanXian, MachineUsage
 from kaka import db
 from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
@@ -87,6 +87,26 @@ def updateUserPermission(args):
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
 
 
+@admin_blueprint.route('/getMachineLog', methods=['POST'])
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True),
+           'MacList'  : fields.Nested({'Mac' : fields.Str(required=True)}, many=True, required=True)
+           },
+          locations = ('json',))
+@verify_request_token
+def getMachineLog(args):
+    macList = args.get('MacList')
+    machineLog = []
+    for mac in macList:
+        if mac.get('Mac') == 'All':
+            machineLog.extend([element.toJson() for element in MachineUsage.query.all()])
+        else:
+            machine = Machine.query.filter_by(macAddress=mac.get('Mac')).first()
+            if machine:
+                for quanXian in MachineUsage.query.filter_by(machineId=machine.id):
+                    machineLog.append(quanXian.toJson())
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MachineLog': machineLog}), 200
 
 
 
@@ -121,26 +141,6 @@ def getUserLog(args):
             for quanXian in models.QuanXian.query.filter_by(userId=user.get('User')):
                 userLog.append(quanXian.toJson())
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserLog': userLog})
-
-@admin_blueprint.route('/getMachineLog', methods=['POST'])
-@verify_request_json
-@use_args({'User'     : fields.Str(required=True),
-           'Token'    : fields.Str(required=True),
-           'MacList'  : fields.Nested({'Mac' : fields.Str(required=True)}, many=True, required=True)
-           },
-          locations = ('json',))
-@verify_request_token
-def getMachineLog(args):
-    macList = args.get('MacList')
-    machineLog = []
-    for mac in macList:
-        if mac.get('Mac') == 'All':
-            machineLog.extend([element.toJson() for element in models.MachineUsage.query.all()])
-        else:
-            for quanXian in models.MachineUsage.query.filter_by(machineId=mac.get('Mac')):
-                machineLog.append(quanXian.toJson())
-    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MachineLog': machineLog})
-
 
 
 @admin_blueprint.route('/getMachinePermissionDetail', methods=['POST'])

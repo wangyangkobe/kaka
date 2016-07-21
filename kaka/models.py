@@ -161,3 +161,8 @@ class MachineUsage(db.Model):
         self.machineId = machineId
         self.startTime = startTime
         self.endTime = endTime
+        
+    def toJson(self):
+        return dict((c.name,
+                     getattr(self, c.name))
+                     for c in self.__table__.columns)

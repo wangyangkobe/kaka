@@ -29,7 +29,6 @@ def test():
 def register(args):
     try:
         user = User(**request.get_json())
-        print user.toJson()
         user.verifyUser()
         db.session.add(user)
         db.session.commit()
