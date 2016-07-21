@@ -90,9 +90,9 @@ def queryMachines(args):
     result = []
     for element in machineList:
         macAddress = element.get('Mac', '')
-        machine = models.Machine.getMachineByMac(macAddress)
+        machine = Machine.getMachineByMac(macAddress)
         if not machine:
             return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-        for shenQing in models.ShenQing.query.filter_by(userId=userId, machineId=machine.id):
+        for shenQing in ShenQing.query.filter_by(userId=userId, machineId=machine.id):
             result.append({'Mac': macAddress, 'Permission': shenQing.needPermission, 'StatusCode': shenQing.statusCode})
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionResult': result}), 200
