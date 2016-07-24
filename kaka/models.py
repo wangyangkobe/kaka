@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from kaka import db
+from kaka import db, logger
 import datetime
 from flask_login import UserMixin, make_secure_token
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -24,6 +24,7 @@ class User(db.Model, UserMixin):
     quanXians   = db.relationship('QuanXian', cascade="all")
     
     def __init__(self, **kargs):
+	logger.info('User __init__: kargs = {}'.format(kargs))
         self.userName = kargs.get('UserName', "")
         self.passWord = generate_password_hash(kargs.get('Password'))
         self.phone    = kargs.get('Phone', '')
@@ -31,7 +32,7 @@ class User(db.Model, UserMixin):
         self.verifyCode = kargs.get('VerifyCode', '')
         self.pushToken  = kargs.get('PushToken', '')
         #self.userType   = kargs.get('UserType', 0)
-        self.registerType = kargs.get('RegisterType', 0)
+        self.registerType = int(kargs.get('RegisterType', 0))
         self.userMoney   = kargs.get('UserMoney', 0.0)
         
     def verifyUser(self):
@@ -39,15 +40,14 @@ class User(db.Model, UserMixin):
             raise ValueError('手机注册，Phone不能为空!')
         if self.registerType == 1 and not self.email:
             raise ValueError('邮箱注册，Email不能为空!')
-               
         if self.registerType==0 and User.query.filter_by(phone=self.phone).count() == 0:
             return True
         elif self.registerType==1 and User.query.filter_by(email=self.email).count() == 0:
             return True
         elif self.registerType==0:
-            raise ValidationError("The phone \"{}\" has been registered!".format(self.phone))
+            raise ValueError("The phone \"{}\" has been registered!".format(self.phone))
         else:
-            raise ValidationError("The email \"{}\" has been registered!".format(self.email))
+            raise ValueError("The email \"{}\" has been registered!".format(self.email))
     
     def checkPassWord(self, password):
         return check_password_hash(self.passWord, password)

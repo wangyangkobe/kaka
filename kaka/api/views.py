@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, request, jsonify
 from kaka.models import User
-from kaka import db
+from kaka import db, logger
 from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
 from webargs.flaskparser import use_args
@@ -34,8 +34,10 @@ def register(args):
         db.session.commit()
         return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '注册成功!', 'User': user.toJson()}), 200
     except ValueError, error:
+	logger.info('ValueError: errorMsg = {}'.format(error.message))
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': error.message}), 400
     except Exception, error:
+	logger.info('Exception: errorMsg = {}'.format(error.message))
         return jsonify({'Status': 'Failed', 'StatusCode': -2, 'Msg': error.message}), 400
     
 @api_blueprint.route('/login', methods=['POST'])
