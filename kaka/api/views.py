@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, request, jsonify
-from kaka.models import User
+from kaka.models import User, Machine, QuanXian
 from kaka import db
 from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
@@ -72,18 +72,6 @@ def login(args):
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '密码错误'}), 400 
 
 
-
-
-
-
-
-
-
-
-
-
-        
-
 def verifyMachines(machines):
     if isinstance(machines, list):
         for machine in machines:
@@ -96,34 +84,30 @@ def verifyMachines(machines):
     
 @api_blueprint.route('/delMachines',  methods=['POST'])
 @verify_request_json
-@use_args({'User'     : fields.Str(required=True),
+@use_args({'UserId'   : fields.Int(required=True),
            'Token'    : fields.Str(required=True),
-           'Machines' : fields.Nested({'Mac' : fields.Str(require=True)}, validate=verifyMachines, many=True)},
+           'Machines' : fields.Nested({'Mac' : fields.Str(require=True)}, required=True, many=True)},
           locations = ('json',))
 @verify_request_token
 def delMachines(args):
-    user = models.User.getUserByUserName(args.get('User', ''))
-    for machine in args.get('Machines'):
-        if machine.get('Mac') == "All":
-            for quanxian in user.quanXians:
-                machines = models.Machine.query.filter_by(macAddress=quanxian.machineId)
-                map(lambda machine : db.session.delete(machine), machines)
+    user = User.query.get(args.get('UserId'))
+    machines = args.get('Machines', [])
+    for machine in machines:
+        macAddress = machine.get('Mac')
+        if macAddress == 'All':
+            for quanXian in user.quanXians:
+                if quanXian.permission == 0:
+                    pass
+                else:
+                    Machine.query.filter_by(id=quanXian.machineId).delete()
         else:
-            for quanxian in models.QuanXian.query.filter_by(userId=user.userName, machineId=machine.get('Mac')):
-                machines = models.Machine.query.filter_by(macAddress=quanxian.machineId)
-                map(lambda machine : db.session.delete(machine), machines)
-                print quanxian.machineId
-        db.session.commit()
-    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
-        
-    print args
-    if args.get('Machines') == 'All':
-        print user.quanXians
-        map(lambda machine : db.session.delete(machine), user.machines)
-    else:
-        needDeletes = request.get_json().get("Machines", [])
-        print needDeletes
-        result = [i for i in user.machines for j in needDeletes if i.macAddress == j['mac']]
-        map(lambda machine : db.session.delete(machine), result)
+            machine = Machine.query.filter_by(macAddress=macAddress).first()
+            if not machine:
+                return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '操作失败,机器{}不存在!'.format(macAddress)}), 400 
+            if QuanXian.query.filter(QuanXian.userId==user.id).filter(QuanXian.machineId==machine.id).filter(QuanXian.permission!=0):
+                Machine.query.filter_by(id=machine.id).delete()
+            else:
+                return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '您是普通用户,无权删除机器{}!'.format(macAddress)}), 400 
     db.session.commit()
-    return jsonify(user.toJson())
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200   
+                

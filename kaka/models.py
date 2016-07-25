@@ -129,7 +129,7 @@ class ShenQing(db.Model):
     __tablename__  = 'shen_qing'
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
-    machineId  = db.Column(db.Integer, db.ForeignKey('machine.id'))
+    machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
     statusCode = db.Column(db.Integer, default=0)  #0代表管理员未查看该权限申请请求，-1表示拒绝该申请，1表示通过该申请
     needPermission = db.Column(db.Integer, default=0)
     reason     = db.Column(db.String(200))
@@ -152,7 +152,7 @@ class MachineUsage(db.Model):
     __tablename__  = 'machine_usage'
     __table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
     userId     = db.Column(db.Integer, db.ForeignKey('user.id'))
-    machineId  = db.Column(db.Integer, db.ForeignKey('machine.id'))
+    machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
     startTime  = db.Column(db.DateTime)
     endTime    = db.Column(db.DateTime)
     

@@ -121,7 +121,8 @@ def applyPermission(args):
           locations = ('json',))
 @verify_request_token
 def infoUseMachine(args):
-    machine = Machine.getMachineByMac(args.get('Mac', ''))
+    macAddress = args.get('Mac', '')
+    machine = Machine.getMachineByMac(macAddress)
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
     machineUsage = MachineUsage.query.filter_by(userId=args.get('UserId'), machineId=machine.id).first()
