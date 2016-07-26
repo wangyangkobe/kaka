@@ -150,17 +150,18 @@ class ShenQing(db.Model):
         
 class MachineUsage(db.Model):
     __tablename__  = 'machine_usage'
-    __table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
+    InfoUse, InfoStop = (0, 1)
+    id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId     = db.Column(db.Integer, db.ForeignKey('user.id'))
     machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
-    startTime  = db.Column(db.DateTime)
-    endTime    = db.Column(db.DateTime)
+    action     = db.Column(db.Integer, nullable=True)  #1代表开始使用， 1代表停止使用
+    actiomTime = db.Column(db.DateTime)
     
-    def __init__(self, userId, machineId, startTime=None, endTime=None):
+    def __init__(self, userId, machineId, action=None, actionTime=datetime.datetime.utcnow()):
         self.userId = userId
         self.machineId = machineId
-        self.startTime = startTime
-        self.endTime = endTime
+        self.action = action
+        self.actiomTime = actionTime
         
     def toJson(self):
         return dict((c.name,

@@ -122,15 +122,12 @@ def applyPermission(args):
 @verify_request_token
 def infoUseMachine(args):
     macAddress = args.get('Mac', '')
-    machine = Machine.getMachineByMac(macAddress)
+    userId     = args.get('UserId')
+    machine    = Machine.getMachineByMac(macAddress)
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    machineUsage = MachineUsage.query.filter_by(userId=args.get('UserId'), machineId=machine.id).first()
-    if machineUsage:
-        machineUsage.startTime=datetime.utcnow() 
-        db.session.merge(machineUsage)
-    else:
-        db.session.add(MachineUsage(userId=args.get('UserId'), machineId=machine.id, startTime=datetime.utcnow()))
+    machineUsage = MachineUsage(userId=userId, machineId=machine.id, action=MachineUsage.InfoUse)
+    db.session.add(machineUsage)
     db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
 
@@ -143,17 +140,16 @@ def infoUseMachine(args):
           locations = ('json',))
 @verify_request_token
 def infoStopUseMachine(args):
-    machine = Machine.getMachineByMac(args.get('Mac', ''))
+    macAddress = args.get('Mac', '')
+    userId     = args.get('UserId')
+    machine    = Machine.getMachineByMac(args.get('Mac', ''))
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    machineUsage = MachineUsage.query.filter_by(userId=args.get('UserId'), machineId=machine.id).first()
-    if machineUsage:
-        machineUsage.endTime=datetime.utcnow() 
-        db.session.merge(machineUsage)
-        db.session.commit()
-        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
-    else:
-        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '您还为使用该机器!'}), 400
+    
+    machineUsage = MachineUsage(userId=userId, machineId=machine.id, action=MachineUsage.InfoStop)
+    db.session.add(machineUsage)
+    db.session.commit()
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
 
 @user_blueprint.route('/queryMachines', methods=['POST'])
 @verify_request_json

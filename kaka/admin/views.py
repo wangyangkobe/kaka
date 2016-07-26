@@ -104,8 +104,12 @@ def getMachineLog(args):
         else:
             machine = Machine.query.filter_by(macAddress=mac.get('Mac')).first()
             if machine:
-                for quanXian in MachineUsage.query.filter_by(machineId=machine.id):
-                    machineLog.append(quanXian.toJson())
+                for machineUsage in MachineUsage.query.filter_by(machineId=machine.id):
+                    machineUsage = machineUsage.toJson()
+                    machineUsage.pop('id', None)
+                    machineLog.append(machineUsage)
+            else:
+                return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(mac.get('Mac'))}), 400
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MachineLog': machineLog}), 200
 
 
@@ -142,7 +146,9 @@ def getMachinePermissionDetail(args):
     for mac in macList:
         if mac.get('Mac') == 'All':
             for element in QuanXian.query.filter(QuanXian.machineId.in_(ownMachineIds)):
-                permissonDetail.append({'User': element.userId, 'Permission': element.permission, 'Mac': element.machineId})
+                user = User.query.get(element.userId)
+                machine = Machine.query.get(element.machineId)
+                permissonDetail.append({'User': user.toJson(), 'Permission': element.permission, 'Machine': machine.toJson()})
         else:
             machine = Machine.query.filter_by(macAddress=mac.get('Mac')).first()
             if not machine:
@@ -150,7 +156,9 @@ def getMachinePermissionDetail(args):
             if machine.id not in ownMachineIds:
                 return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,您不是机器{}的管理员!'.format(mac.get('Mac'))}), 400
             for element in QuanXian.query.filter_by(machineId=machine.id):
-                permissonDetail.append({'User': element.userId, 'Permission': element.permission, 'Mac': element.machineId})
+                user = User.query.get(element.userId)
+                machine = Machine.query.get(element.machineId)
+                permissonDetail.append({'User': user.toJson(), 'Permission': element.permission, 'Machine': machine.toJson()})
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': permissonDetail}), 200
 
     
@@ -169,8 +177,10 @@ def getUserLog(args):
         else:
             if not User.query.get(user.get('UserId')):
                 return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,用户id={}不存在!'.format(user.get('UserId'))}), 400
-            for quanXian in MachineUsage.query.filter_by(userId=user.get('UserId')):
-                userLog.append(quanXian.toJson())
+            for machineUsage in MachineUsage.query.filter_by(userId=user.get('UserId')):
+                machineUsage = machineUsage.toJson()
+                machineUsage.pop('id', None)
+                userLog.append(machineUsage)
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserLog': userLog}), 200
 
 
