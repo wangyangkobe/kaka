@@ -183,4 +183,35 @@ def getUserLog(args):
                 userLog.append(machineUsage)
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserLog': userLog}), 200
 
+@admin_blueprint.route('/getUserDetailInfo', methods=['POST'])
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True),
+           'UserList' : fields.Nested({'UserId' : fields.Integer(required=True)}, required=True)},
+          locations = ('json',))
+@verify_request_token
+def getUserDetailInfo(args):
+    userList = request.get_json().get('UserList')
+    userId   = userList.get('UserId')
+    user     = User.query.get(userId)
+    if user:
+        return  jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserInfo': user.toJson()}), 200
+    else:
+        return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,用户id={}不存在!'.format(userId)}), 400
 
+
+@admin_blueprint.route('/getMachineDetailInfo', methods=['POST'])
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True),
+           'MacList'  : fields.Nested({'Mac' : fields.Str(required=True)}, required=True)},
+          locations = ('json',))
+@verify_request_token
+def getMachineDetailInfo(args):
+    macList = request.get_json().get('MacList')
+    mac     = macList.get('Mac')
+    machine = Machine.query.filter_by(macAddress=mac).first()
+    if machine:
+        return  jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MachineInfo': machine.toJson()}), 200
+    else:
+        return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,机器mac={}不存在!'.format(mac)}), 400

@@ -34,10 +34,10 @@ def register(args):
         db.session.commit()
         return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '注册成功!', 'User': user.toJson()}), 200
     except ValueError, error:
-	logger.info('ValueError: errorMsg = {}'.format(error.message))
+        logger.info('ValueError: errorMsg = {}'.format(error.message))
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': error.message}), 400
     except Exception, error:
-	logger.info('Exception: errorMsg = {}'.format(error.message))
+        logger.info('Exception: errorMsg = {}'.format(error.message))
         return jsonify({'Status': 'Failed', 'StatusCode': -2, 'Msg': error.message}), 400
     
 @api_blueprint.route('/login', methods=['POST'])
