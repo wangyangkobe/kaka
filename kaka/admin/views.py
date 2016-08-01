@@ -141,6 +141,9 @@ def getMachinePermissionDetail(args):
     ownMachines = QuanXian.query.filter(QuanXian.userId == userId).filter(QuanXian.permission != 0)
     ownMachineIds = [element.machineId for element in ownMachines]
     logger.info("getMachinePermissionDetail ownMachineIds = {}".format(ownMachineIds))
+    if not ownMachineIds:
+        return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,您还不是任何机器的管理员!'}), 400
+
     macList = args.get('MacList')
     permissonDetail = []
     for mac in macList:
@@ -208,6 +211,7 @@ def getUserDetailInfo(args):
           locations = ('json',))
 @verify_request_token
 def getMachineDetailInfo(args):
+    logger.info("getMachineDetailInfo: request json = {}".format(request.get_json()))
     macList = request.get_json().get('MacList')
     mac     = macList.get('Mac')
     machine = Machine.query.filter_by(macAddress=mac).first()

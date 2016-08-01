@@ -8,6 +8,7 @@ from webargs.core import ValidationError
     
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
+    mysql_character_set = 'utf8'
     id           = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userName     = db.Column(db.String(80), nullable=False)
     passWord     = db.Column(db.String(80), nullable=True)
