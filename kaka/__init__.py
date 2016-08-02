@@ -17,9 +17,9 @@ os.environ['needDetails'] = 'true'
 # http的域名
 HOST = 'http://sdk.open.api.igexin.com/apiex.htm'
 
-APPKEY = "Ljo9P2kC5A93MhCh6BhnC7"
-APPID = "DTTWD485HI6NNpfL0afH25"
-MASTERSECRET = "sEat0K6eGkAMdatKEfnzi6"
+APPKEY = "TDRjKIDi5j5hAa2HZSsKH9"
+APPID = "4Od62dF1jO6OilfYHRywa5"
+MASTERSECRET = "10TPhxXAoB604xqlW2ORC7"
 CID = ""
 Alias = '请输入别名'
 DEVICETOKEN = ""

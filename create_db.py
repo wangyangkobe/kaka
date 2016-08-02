@@ -1,5 +1,6 @@
 from kaka import db
 from sqlalchemy.sql import text
+
 if __name__ == '__main__':   
     db.drop_all() 
     db.create_all()

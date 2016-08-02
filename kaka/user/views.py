@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from kaka.models import User, ShenQing, Machine, MachineUsage, QuanXian
 from kaka import db, APPKEY, MASTERSECRET, APPID, Alias, HOST, logger
 from kaka.decorators import verify_request_json, verify_request_token
@@ -40,7 +40,7 @@ def TransmissionTemplateDemo(content):
 
     # APN简单推送
     alertMsg = SimpleAlertMsg()
-    alertMsg.alertMsg = ""
+    alertMsg.alertMsg = "兔乖乖"
     apn = APNPayload();
     apn.alertMsg = alertMsg
     apn.badge = 2
@@ -49,9 +49,32 @@ def TransmissionTemplateDemo(content):
     # apn.contentAvailable=1
     # apn.category="ACTIONABLE"
     template.setApnInfo(apn)
-
+    
+    logger.info("TransmissionTemplateDemo: transmissionContent={}".format(content))
     return template
 
+def pushMessageToSingle(tokenList, template):
+    push = IGeTui(HOST, APPKEY, MASTERSECRET)
+    
+    # 定义"SingleMessage"消息体，设置是否离线，离线有效时间，模板设置
+    message = IGtSingleMessage()
+    message.isOffline = True
+    message.offlineExpireTime = 1000 * 3600 * 12
+    message.data = template
+    message.pushNetWorkType = 0#设置是否根据WIFI推送消息，2为4G/3G/2G,1为wifi推送，0为不限制推送
+    target = Target()
+    target.appId = APPID
+    
+    for token in tokenList:
+        target.clientId = token
+        try:
+            ret = push.pushMessageToSingle(message, target)
+            logger.info("pushMessageToSingle: token={}, result={}".format(token, ret))
+        except RequestException, e:
+            # 发生异常重新发送
+            requstId = e.getRequestId()
+            ret = push.pushMessageToSingle(message, target, requstId)
+            logger.info("pushMessageToSingle: token={}, resend result={}".format(token, ret))
 
 def pushMessageToList(tokenList, template):
     # 消息模版： 
@@ -110,7 +133,11 @@ def applyPermission(args):
     managerIds = [element.userId for element in QuanXian.query.all() if element.permission in [1, 2]]
     tokenList = filter(lambda x : len(x) > 0, [User.query.get(id).pushToken for id in managerIds])
     logger.info("managerIds = {}\ntokens ={}".format(managerIds, tokenList))
-    pushMessageToList(tokenList, TransmissionTemplateDemo(applyDetail))
+    
+    pushContent = request.get_json()
+    pushContent.pop('Token', None)
+    pushMessageToSingle(tokenList, TransmissionTemplateDemo(pushContent))
+    
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '申请成功!', 'ApplyDetail': shenQing.toJson()}), 200
 
 @user_blueprint.route('/infoUseMachine', methods=['POST'])
