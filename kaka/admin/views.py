@@ -5,6 +5,7 @@ from kaka import db, logger
 from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
 from webargs.flaskparser import use_args
+from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
 
 admin_blueprint = Blueprint('admin', __name__)
     
@@ -58,6 +59,10 @@ def addUserPermission(args):
     quanXian = QuanXian(userId, machine.id, permission=permisson)
     db.session.merge(quanXian)
     db.session.commit()
+    
+    pushContent = {'Action': 'addUserPermission', 'Permission': permisson}
+    pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
+    
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
 
 
@@ -84,6 +89,10 @@ def updateUserPermission(args):
     quanXian = QuanXian(userId, machine.id, permission=permisson)
     db.session.merge(quanXian)
     db.session.commit()
+    
+    pushContent = {'Action': 'updateUserPermission', 'Permission': permisson}
+    pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
+    
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
 
 
