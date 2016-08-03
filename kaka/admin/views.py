@@ -60,7 +60,7 @@ def addUserPermission(args):
     db.session.merge(quanXian)
     db.session.commit()
     
-    pushContent = {'Action': 'addUserPermission', 'Permission': permisson}
+    pushContent = {'Action': 'addUserPermission', 'Permission': permisson, 'Mac': macAddress}
     pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
     
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
@@ -90,7 +90,7 @@ def updateUserPermission(args):
     db.session.merge(quanXian)
     db.session.commit()
     
-    pushContent = {'Action': 'updateUserPermission', 'Permission': permisson}
+    pushContent = {'Action': 'updateUserPermission', 'Permission': permisson, 'Mac': macAddress}
     pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
     
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
