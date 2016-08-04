@@ -38,29 +38,46 @@ def addMachines(args):
 
 @admin_blueprint.route('/addUserPermission', methods=['POST'])
 @verify_request_json
-@use_args({'UserId'   : fields.Int(required=True),
+@use_args({'UserId'   : fields.Int(),
+           'Phone'    : fields.Str(), 
            'Token'    : fields.Str(required=True),
            'UserList' : fields.Nested({'Mac'        : fields.Str(required=True),
                                        'UserId'     : fields.Int(required=True),
+                                       'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
+                                       'EndTime'    : fields.DateTime(format='%Y-%m-%d %H:%M'),
+                                       'Money'      : fields.Float(), 
                                        'Permission' : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3])}, required=True)},
           locations = ('json',))
-@verify_request_token
 def addUserPermission(args):
-    userList = request.get_json().get("UserList")
-    userId   = userList.get('UserId')
-    user     = User.query.get(userId)
+    userId = args.get('UserId', -100)
+    phone  = args.get('Phone', '')
+    token  = args.get('Token', '')
+    user   = User.query.filter_by(phone=phone).first()
     if not user:
-        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "UserId {} does't exist".format(userId)}), 400
+        user = User.query.get(userId)
+        if not user:
+            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '不存在该用户!'}), 400
+    
+    if token != user.token:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '输入的token错误!'}), 400
+        
+    userList = request.get_json().get("UserList")
+    userId   = user.id
     macAddress = userList.get('Mac', '')
     machine    = Machine.getMachineByMac(macAddress)
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
+    
     permisson = userList.get('Permission')
-    quanXian = QuanXian(userId, machine.id, permission=permisson)
+    startTime  = userList.get('StartTime', '') if userList.get('StartTime', '') else None
+    endTime    = userList.get('EndTime', '') if userList.get('EndTime', '') else None
+    money      = userList.get('Money', 0.0)
+    
+    quanXian = QuanXian(userId, machine.id, permission=permisson, startTime=startTime, endTime=endTime, money=money)
     db.session.merge(quanXian)
     db.session.commit()
     
-    pushContent = {'Action': 'addUserPermission', 'Permission': permisson, 'Mac': macAddress}
+    pushContent = {'Action': 'addUserPermission', 'Permission': permisson, 'Mac': macAddress, 'StartTime': startTime, 'EndTime': endTime, 'Money': money}
     pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
     
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
@@ -106,17 +123,22 @@ def updateUserPermission(args):
 @verify_request_token
 def getMachineLog(args):
     macList = args.get('MacList')
+    manageMachines = []
+    for quanXian in QuanXian.query.filter(userId=args.get('UserId')):
+        if quanXian.permission != 0:
+            manageMachines.append(quanXian.machineId)
     machineLog = []
     for mac in macList:
         if mac.get('Mac') == 'All':
-            machineLog.extend([element.toJson() for element in MachineUsage.query.all()])
+            machineLog.extend([element.toJson() for element in MachineUsage.query.all() if element.machineId in manageMachines])
         else:
             machine = Machine.query.filter_by(macAddress=mac.get('Mac')).first()
             if machine:
                 for machineUsage in MachineUsage.query.filter_by(machineId=machine.id):
-                    machineUsage = machineUsage.toJson()
-                    machineUsage.pop('id', None)
-                    machineLog.append(machineUsage)
+                    if machineUsage.machieId in manageMachines:
+                        machineUsage = machineUsage.toJson()
+                        machineUsage.pop('id', None)
+                        machineLog.append(machineUsage)
             else:
                 return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(mac.get('Mac'))}), 400
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MachineLog': machineLog}), 200
@@ -159,8 +181,11 @@ def getMachinePermissionDetail(args):
         if mac.get('Mac') == 'All':
             for element in QuanXian.query.filter(QuanXian.machineId.in_(ownMachineIds)):
                 user = User.query.get(element.userId)
+                userJson = user.toJson()
+                userJson.pop('passWord', None)
+                userJson.pop('token', None)
                 machine = Machine.query.get(element.machineId)
-                permissonDetail.append({'User': user.toJson(), 'Permission': element.permission, 'Machine': machine.toJson()})
+                permissonDetail.append({'User': userJson, 'Permission': element.permission, 'Machine': machine.toJson()})
         else:
             machine = Machine.query.filter_by(macAddress=mac.get('Mac')).first()
             if not machine:
@@ -169,8 +194,11 @@ def getMachinePermissionDetail(args):
                 return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,您不是机器{}的管理员!'.format(mac.get('Mac'))}), 400
             for element in QuanXian.query.filter_by(machineId=machine.id):
                 user = User.query.get(element.userId)
+                userJson = user.toJson()
+                userJson.pop('passWord', None)
+                userJson.pop('token', None)
                 machine = Machine.query.get(element.machineId)
-                permissonDetail.append({'User': user.toJson(), 'Permission': element.permission, 'Machine': machine.toJson()})
+                permissonDetail.append({'User': userJson, 'Permission': element.permission, 'Machine': machine.toJson()})
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': permissonDetail}), 200
 
     
@@ -206,8 +234,10 @@ def getUserDetailInfo(args):
     userList = request.get_json().get('UserList')
     userId   = userList.get('UserId')
     user     = User.query.get(userId)
+    userJson = user.toJson()
+    userJson.pop('passWord', None)
     if user:
-        return  jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserInfo': user.toJson()}), 200
+        return  jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserInfo': userJson}), 200
     else:
         return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,用户id={}不存在!'.format(userId)}), 400
 

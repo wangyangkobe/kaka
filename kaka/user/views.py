@@ -16,6 +16,9 @@ user_blueprint = Blueprint('user', __name__)
            'Token'    : fields.Str(required=True),
            'ApplyDetail' : fields.Nested({"Mac"         : fields.Str(required=True),
                                           "Permission"  : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3]),
+                                          'StartTime'   : fields.DateTime(format='%Y-%m-%d %H:%M'),
+                                          'EndTime'     : fields.DateTime(format='%Y-%m-%d %H:%M'),
+                                          'Money'       : fields.Float(), 
                                           "Reason"      : fields.Str()}, required=True)
            },
           locations = ('json',))
@@ -24,13 +27,16 @@ def applyPermission(args):
     user = User.query.get(args['UserId'])
     applyDetail = args.get('ApplyDetail')
     macAddress = applyDetail.get('Mac', '')
+    startTime  = applyDetail.get('StartTime', '') if applyDetail.get('StartTime', '') else None
+    endTime    = applyDetail.get('EndTime', '') if applyDetail.get('EndTime', '') else None
+    money      = applyDetail.get('Money', 0.0)
     machine = Machine.query.filter_by(macAddress=macAddress).first()
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
     
     needPermission = applyDetail.get('Permission')
     reason = applyDetail.get('Reason')
-    shenQing = ShenQing(user.id, machine.id, reason=reason, needPermission=needPermission)
+    shenQing = ShenQing(user.id, machine.id, reason=reason, needPermission=needPermission, startTime=startTime, endTime=endTime, money=money)
     db.session.add(shenQing)
     db.session.commit()
     
@@ -40,6 +46,8 @@ def applyPermission(args):
     
     pushContent = request.get_json()
     pushContent.pop('Token', None)
+    pushContent['UserName'] = user.userName
+    pushContent['Phone'] = user.phone
     pushMessageToSingle(tokenList, TransmissionTemplateDemo(pushContent))
     
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '申请成功!', 'ApplyDetail': shenQing.toJson()}), 200
@@ -82,23 +90,39 @@ def infoStopUseMachine(args):
     db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
 
-@user_blueprint.route('/queryMachines', methods=['POST'])
+@user_blueprint.route('/queryApplyings', methods=['POST'])
 @verify_request_json
 @use_args({'UserId'   : fields.Int(required=True),
            'Token'    : fields.Str(required=True),
-           'Machines' : fields.Nested({"Mac" : fields.Str(required=True)}, require=True, many=True)
+           #'Machines' : fields.Nested({"Mac" : fields.Str(required=True)}, require=True, many=True)
            },
           locations = ('json',))
 @verify_request_token
-def queryMachines(args):
+def queryApplyings(args):
     userId = args.get('UserId')
-    machineList = args.get('Machines', [])
     result = []
-    for element in machineList:
-        macAddress = element.get('Mac', '')
-        machine = Machine.getMachineByMac(macAddress)
-        if not machine:
-            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-        for shenQing in ShenQing.query.filter_by(userId=userId, machineId=machine.id):
-            result.append({'Mac': macAddress, 'Permission': shenQing.needPermission, 'StatusCode': shenQing.statusCode})
-    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionResult': result}), 200
+    for shenQing in ShenQing.query.filter_by(userId=userId):
+        result.append(shenQing.toJson())
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'Applyings': result}), 200
+
+@user_blueprint.route('/infoOperateMachine', methods=['POST'])
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True),
+           'Action'   : fields.Str(required=True),
+           'Mac'      : fields.Str(required=True)},
+          locations = ('json',))
+@verify_request_token
+def infoOperateMachine(args):
+    macAddress = args.get('Mac', '')
+    userId     = args.get('UserId')
+    action     = args.get('Action')
+    machine    = Machine.getMachineByMac(macAddress)
+    if not machine:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
+    if action not in ['Use', 'Stop']:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "无效的action \"{}\"".format(action)}), 400
+    machineUsage = MachineUsage(userId=userId, machineId=machine.id, action=action)
+    db.session.add(machineUsage)
+    db.session.commit()
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200

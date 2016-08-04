@@ -25,7 +25,7 @@ class User(db.Model, UserMixin):
     quanXians   = db.relationship('QuanXian', cascade="all")
     
     def __init__(self, **kargs):
-	logger.info('User __init__: kargs = {}'.format(kargs))
+        logger.info('User __init__: kargs = {}'.format(kargs))
         self.userName = kargs.get('UserName', "")
         self.passWord = generate_password_hash(kargs.get('Password'))
         self.phone    = kargs.get('Phone', '')
@@ -122,10 +122,15 @@ class QuanXian(db.Model):
         self.machineName = machineName
         
     def toJson(self):
-        return dict((c.name,
-                     getattr(self, c.name))
-                     for c in self.__table__.columns)
-        
+        result =  dict((c.name,
+                        getattr(self, c.name))
+                       for c in self.__table__.columns)
+        if self.startTime:
+            result['startTime'] = self.startTime.strftime("%Y-%m-%d %H:%M")
+        if self.endTime:
+            result['endTime']   = self.endTime.strftime("%Y-%m-%d %H:%M")
+        return result
+    
 class ShenQing(db.Model):
     __tablename__  = 'shen_qing'
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
@@ -135,19 +140,30 @@ class ShenQing(db.Model):
     needPermission = db.Column(db.Integer, default=0)
     reason     = db.Column(db.String(200))
     time       = db.Column(db.DateTime, default=datetime.datetime.utcnow) #申请的时间
+    startTime  = db.Column(db.DateTime) # 开始使用该机器的时间
+    endTime    = db.Column(db.DateTime) # 结束使用该机器的时间
+    money      = db.Column(db.Float, default=0.0)
     
-    def __init__(self, userId, machineId, statusCode=0, needPermission=-1, reason='', time=datetime.datetime.utcnow()):
+    def __init__(self, userId, machineId, statusCode=0, needPermission=-1, reason='', startTime=None, endTime=None, money=0.0, time=datetime.datetime.utcnow()):
         self.userId = userId
         self.machineId = machineId
         self.statusCode = statusCode
         self.needPermission = needPermission
         self.reason = reason
         self.time = time
+        self.startTime = startTime
+        self.endTime   = endTime
+        self.money = money
     
     def toJson(self):
-        return dict((c.name,
-                     getattr(self, c.name))
-                     for c in self.__table__.columns)
+        result =  dict((c.name,
+                        getattr(self, c.name))
+                       for c in self.__table__.columns)
+        if self.startTime:
+            result['startTime'] = self.startTime.strftime("%Y-%m-%d %H:%M")
+        if self.endTime:
+            result['endTime']   = self.endTime.strftime("%Y-%m-%d %H:%M")
+        return result
         
 class MachineUsage(db.Model):
     __tablename__  = 'machine_usage'
@@ -155,7 +171,7 @@ class MachineUsage(db.Model):
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId     = db.Column(db.Integer, db.ForeignKey('user.id'))
     machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
-    action     = db.Column(db.Integer, nullable=True)  #1代表开始使用， 1代表停止使用
+    action     = db.Column(db.String(20), nullable=True)  #1代表开始使用， 1代表停止使用
     actiomTime = db.Column(db.DateTime)
     
     def __init__(self, userId, machineId, action=None, actionTime=datetime.datetime.utcnow()):
