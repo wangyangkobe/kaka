@@ -62,7 +62,19 @@ class User(db.Model, UserMixin):
     @staticmethod
     def checkUserToken(userid, token):
         return User.query.filter_by(id=userid, token=token).count() > 0
-    
+    @staticmethod
+    def getUserByIdOrPhoneOrMail(id=None, phone=None, mail=None):
+	if phone:
+	    user = User.query.filter_by(phone=phone).first()
+	    if user:
+		return user;
+	    else:
+		if id:
+		    return User.query.get(id)
+	elif id:
+	    return User.query.get(id)
+	else:
+	    return None    
     def toJson(self):
         return dict((c.name,
                      getattr(self, c.name))
@@ -116,8 +128,14 @@ class QuanXian(db.Model):
         self.machineId = machineId
         self.permission = permission
         self.reason = reason
-        self.startTime = startTime
-        self.endTime = endTime
+	if startTime:
+            self.startTime = startTime
+        else:
+	    self.startTime = datetime.datetime.utcnow()
+	if endTime:
+	    self.endTime = endTime
+	else:
+	    self.endTime = datetime.datetime.utcnow()
         self.money = money
         self.machineName = machineName
         

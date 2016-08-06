@@ -69,7 +69,9 @@ def login(args):
         user.pushToken = request.json.get('PushToken', '')
         db.session.merge(user)
         db.session.commit()
-        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '登录成功!', 'User': user.toJson()}), 200
+        userJson = user.toJson()
+	userJson.pop('passWord', None),
+        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '登录成功!', 'User': userJson}), 200
     else:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '密码错误'}), 400 
 

@@ -11,7 +11,8 @@ admin_blueprint = Blueprint('admin', __name__)
     
 @admin_blueprint.route('/addMachines', methods=['POST'])
 @verify_request_json
-@use_args({'UserId'   : fields.Int(required=True),
+@use_args({'UserId'   : fields.Int(),
+           'Phone'    : fields.Str(),
            'Token'    : fields.Str(required=True),
            'Machines' : fields.Nested({"Mac"         : fields.Str(required=True),
                                        "MachineName" : fields.Str(required=True),
@@ -20,8 +21,9 @@ admin_blueprint = Blueprint('admin', __name__)
           locations = ('json',))
 @verify_request_token
 def addMachines(args):
-    userId = args.get("UserId")
-    user = User.query.get(userId)
+    userId = args.get("UserId", '')
+    phone  = args.get('Phone', '')
+    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
     if not user:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "UserId {} does't exist".format(userId)}), 400
     machine = request.get_json().get("Machines")
@@ -48,19 +50,12 @@ def addMachines(args):
                                        'Money'      : fields.Float(), 
                                        'Permission' : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3])}, required=True)},
           locations = ('json',))
+@verify_request_token
 def addUserPermission(args):
-    userId = args.get('UserId', -100)
+    userId = args.get('UserId', '')
     phone  = args.get('Phone', '')
     token  = args.get('Token', '')
-    user   = User.query.filter_by(phone=phone).first()
-    if not user:
-        user = User.query.get(userId)
-        if not user:
-            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '不存在该用户!'}), 400
-    
-    if token != user.token:
-        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '输入的token错误!'}), 400
-        
+    user   = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)  
     userList = request.get_json().get("UserList")
     userId   = user.id
     macAddress = userList.get('Mac', '')
@@ -69,8 +64,8 @@ def addUserPermission(args):
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
     
     permisson = userList.get('Permission')
-    startTime  = userList.get('StartTime', '') if userList.get('StartTime', '') else None
-    endTime    = userList.get('EndTime', '') if userList.get('EndTime', '') else None
+    startTime  = userList.get('StartTime', None) 
+    endTime    = userList.get('EndTime', None) 
     money      = userList.get('Money', 0.0)
     
     quanXian = QuanXian(userId, machine.id, permission=permisson, startTime=startTime, endTime=endTime, money=money)
@@ -85,10 +80,14 @@ def addUserPermission(args):
 
 @admin_blueprint.route('/updateUserPermission', methods=['POST'])
 @verify_request_json
-@use_args({'UserId'   : fields.Int(required=True),
+@use_args({'UserId'   : fields.Int(),
+           'Phone'    : fields.Str(),
            'Token'    : fields.Str(required=True),
            'UserPermissionList' : fields.Nested({'Mac'        : fields.Str(required=True),
-                                                 'UserId'     : fields.Str(required=True),
+                                                 'UserId'     : fields.Int(required=True),
+						 'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
+                                                 'EndTime'    : fields.DateTime(format='%Y-%m-%d %H:%M'),
+                                                 'Money'      : fields.Float(),
                                                  'Permission' : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3])}, required=True)},
           locations = ('json',))
 @verify_request_token
@@ -103,11 +102,22 @@ def updateUserPermission(args):
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
     permisson = userPermissonList.get('Permission')
-    quanXian = QuanXian(userId, machine.id, permission=permisson)
+    startTime  = userPermissonList.get('StartTime', '') if userPermissonList.get('StartTime', '') else None
+    endTime    = userPermissonList.get('EndTime', '') if userPermissonList.get('EndTime', '') else None
+    money      = userPermissonList.get('Money', 0.0)
+    quanXian = QuanXian.query.filter_by(userId=userId, machineId=machine.id).first()
+    if not quanXian:
+	return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User {} don't use machine {}".format(userId, macAddress)}), 400
+    if money != 0.0:
+	quanXian.money = money
+    if startTime:
+	quanXian.startTime = startTime
+    if endTime:
+	quanXian.endTime = endTime 
     db.session.merge(quanXian)
     db.session.commit()
     
-    pushContent = {'Action': 'updateUserPermission', 'Permission': permisson, 'Mac': macAddress}
+    pushContent = {'Action': 'updateUserPermission', 'Permission': permisson, 'Mac': macAddress, 'Money':money, 'StartTime':startTime, 'EndTime':endTime}
     pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
     
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200

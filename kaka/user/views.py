@@ -12,7 +12,8 @@ user_blueprint = Blueprint('user', __name__)
     
 @user_blueprint.route('/applyPermission', methods=['POST'])
 @verify_request_json
-@use_args({'UserId'   : fields.Int(required=True),
+@use_args({'UserId'   : fields.Int(),
+           'Phone'    : fields.Str(),
            'Token'    : fields.Str(required=True),
            'ApplyDetail' : fields.Nested({"Mac"         : fields.Str(required=True),
                                           "Permission"  : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3]),
@@ -24,7 +25,9 @@ user_blueprint = Blueprint('user', __name__)
           locations = ('json',))
 @verify_request_token
 def applyPermission(args):
-    user = User.query.get(args['UserId'])
+    userId = args.get('UserId', '')
+    phone  = args.get('Phone', '')
+    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone) 
     applyDetail = args.get('ApplyDetail')
     macAddress = applyDetail.get('Mac', '')
     startTime  = applyDetail.get('StartTime', '') if applyDetail.get('StartTime', '') else None
