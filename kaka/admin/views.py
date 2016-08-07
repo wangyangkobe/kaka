@@ -177,14 +177,21 @@ def getNewRequest(args):
 @verify_request_json
 @use_args({'UserId'   : fields.Int(required=True),
            'Token'    : fields.Str(required=True),
-           'MacList'  : fields.Nested({'Mac' : fields.Str(required=True)}, many=True, required=True)
+           'PhoneList': fields.Nested({'Phone' : fields.Str(required=True)}, required=True),
+           'MacList'  : fields.Nested({'Mac'   : fields.Str(required=True)}, many=True, required=True)
            },
           locations = ('json',))
 @verify_request_token
 def getMachinePermissionDetail(args):
     userId = args.get('UserId')
+    phone  = args.get('PhoneList').get('Phone')
     ownMachines = QuanXian.query.filter(QuanXian.userId == userId).filter(QuanXian.permission != 0)
     ownMachineIds = [element.machineId for element in ownMachines]
+    userIds = []
+    if phone == 'All':
+        userIds = [user.id for user in User.query.all()]
+    else:
+        userIds = [user.id for user in User.query.filter_by(phone=phone)]
     logger.info("getMachinePermissionDetail ownMachineIds = {}".format(ownMachineIds))
     if not ownMachineIds:
         return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,您还不是任何机器的管理员!'}), 400
@@ -194,6 +201,8 @@ def getMachinePermissionDetail(args):
     for mac in macList:
         if mac.get('Mac') == 'All':
             for element in QuanXian.query.filter(QuanXian.machineId.in_(ownMachineIds)):
+                if element.userId not in userIds:
+                    continue
                 user = User.query.get(element.userId)
                 userJson = user.toJson()
                 userJson.pop('passWord', None)
@@ -207,6 +216,8 @@ def getMachinePermissionDetail(args):
             if machine.id not in ownMachineIds:
                 return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,您不是机器{}的管理员!'.format(mac.get('Mac'))}), 400
             for element in QuanXian.query.filter_by(machineId=machine.id):
+                if element.userId not in userIds:
+                    continue
                 user = User.query.get(element.userId)
                 userJson = user.toJson()
                 userJson.pop('passWord', None)
@@ -241,13 +252,15 @@ def getUserLog(args):
 @verify_request_json
 @use_args({'UserId'   : fields.Int(required=True),
            'Token'    : fields.Str(required=True),
-           'UserList' : fields.Nested({'UserId' : fields.Integer(required=True)}, required=True)},
+           'UserList' : fields.Nested({'UserId' : fields.Integer(),
+                                        'Phone' : fields.Str()}, required=True)},
           locations = ('json',))
 @verify_request_token
 def getUserDetailInfo(args):
     userList = request.get_json().get('UserList')
-    userId   = userList.get('UserId')
-    user     = User.query.get(userId)
+    userId   = userList.get('UserId', '')
+    phone    = userList.get('Phone', '')
+    user     = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
     userJson = user.toJson()
     userJson.pop('passWord', None)
     if user:

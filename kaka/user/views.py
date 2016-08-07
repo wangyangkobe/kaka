@@ -129,3 +129,29 @@ def infoOperateMachine(args):
     db.session.add(machineUsage)
     db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
+
+@user_blueprint.route('/getMyPermissionDetail', methods=['POST'])
+@verify_request_json
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True),
+           'MacList'  : fields.Nested({'Mac' : fields.Str(required=True)}, required=True, many=True)},
+          locations = ('json',))
+@verify_request_token
+def getMyPermissionDetail(args):
+    macList = request.get_json().get('MacList', [])
+    userId  = args.get('UserId')
+    result  = []
+    for mac in macList:
+        if mac.get('Mac') == 'All':
+            for quanXian in QuanXian.query.filter_by(userId=userId):
+                machine = Machine.query.get(quanXian.machineId)
+                result.append({'Permission': quanXian.permission, 'Machine': machine.toJson()})
+        else:
+            mac     = mac.get('Mac')
+            machine = Machine.query.filter_by(macAddress=mac).first()
+            if not machine:
+                return jsonify({'Status': 'Failded', 'StatusCode': -1, 'Msg': '操作失败, 无法查看机器{}!'.format(mac)}), 400
+            for quanXian in QuanXian.query.filter_by(userId=userId, machineId=machine.id):
+                result.append({'Permission': quanXian.permission, 'Machine': machine.toJson()})
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': result}), 200

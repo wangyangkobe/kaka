@@ -6,6 +6,7 @@ from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
 from webargs.flaskparser import use_args
 from webargs.core import ValidationError
+from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
 
 api_blueprint = Blueprint('api', __name__)
  
@@ -63,14 +64,19 @@ def login(args):
     
     if not user:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '输入的Phone或Email不存在!'}), 400
-    
+    oldPushToken = user.pushToken if user else ''
     if user.checkPassWord(passWord):
         user.token = user.get_auth_token()
         user.pushToken = request.json.get('PushToken', '')
         db.session.merge(user)
         db.session.commit()
         userJson = user.toJson()
-	userJson.pop('passWord', None),
+        userJson.pop('passWord', None),
+
+        if oldPushToken and oldPushToken != user.pushToken:
+            pushContent = {'Phone': phone, 'Action': 're-loggin', 'Msg': u'user change phone to re-loggin'}
+            pushMessageToSingle([oldPushToken], TransmissionTemplateDemo(pushContent))
+
         return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '登录成功!', 'User': userJson}), 200
     else:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '密码错误'}), 400 
