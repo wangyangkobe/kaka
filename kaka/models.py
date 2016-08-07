@@ -112,30 +112,26 @@ class Machine(db.Model):
         
 class QuanXian(db.Model):
     __tablename__  = 'user_machine'
-    __table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
+    #__table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
+    id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
     machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete='CASCADE'))
     permission = db.Column(db.Integer, default=0) # 0代表普通用户，1代表管理员，2代表超级管理员，3代表厂家
     reason     = db.Column(db.String(200))
-    startTime  = db.Column(db.DateTime, default=datetime.datetime.utcnow)
-    endTime    = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    startTime  = db.Column(db.DateTime)
+    endTime    = db.Column(db.DateTime)
     money      = db.Column(db.Float, default=0.0)
     machineName= db.Column(db.String(200)) #用户对机器的命名
     
-    def __init__(self, userId, machineId, permission=0, reason=None, startTime=datetime.datetime.utcnow(), 
-                 endTime=datetime.datetime.utcnow(), money = 0, machineName=0):
+    def __init__(self, userId, machineId, permission=0, reason=None, startTime=None, endTime=None, money = 0, machineName=0):
         self.userId = userId
         self.machineId = machineId
         self.permission = permission
         self.reason = reason
-	if startTime:
+        if startTime:
             self.startTime = startTime
-        else:
-	    self.startTime = datetime.datetime.utcnow()
-	if endTime:
-	    self.endTime = endTime
-	else:
-	    self.endTime = datetime.datetime.utcnow()
+	    if endTime:
+	        self.endTime = endTime
         self.money = money
         self.machineName = machineName
         

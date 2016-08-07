@@ -36,7 +36,7 @@ def addMachines(args):
         db.session.commit()
         return  jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!', 'Machine': machine.toJson()}), 200
     else:
-        return  jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作失败，改机器已被添加!'}), 400
+        return  jsonify({'Status' :  'Failed', 'StatusCode':-1, 'Msg' : '操作失败，改机器已被添加!'}), 400
 
 @admin_blueprint.route('/addUserPermission', methods=['POST'])
 @verify_request_json
@@ -101,23 +101,27 @@ def updateUserPermission(args):
     machine = Machine.getMachineByMac(macAddress)
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    permisson = userPermissonList.get('Permission')
-    startTime  = userPermissonList.get('StartTime', '') if userPermissonList.get('StartTime', '') else None
-    endTime    = userPermissonList.get('EndTime', '') if userPermissonList.get('EndTime', '') else None
-    money      = userPermissonList.get('Money', 0.0)
-    quanXian = QuanXian.query.filter_by(userId=userId, machineId=machine.id).first()
+    permission = userPermissonList.get('Permission')
+    startTime  = userPermissonList.get('StartTime', None) 
+    endTime    = userPermissonList.get('EndTime', None)
+    money      = userPermissonList.get('Money', -1)
+
+    quanXian = QuanXian.query.filter_by(userId=userId, machineId=machine.id).order_by('id desc').first()
+    quanXian.permission = permission
     if not quanXian:
-	return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User {} don't use machine {}".format(userId, macAddress)}), 400
-    if money != 0.0:
-	quanXian.money = money
-    if startTime:
-	quanXian.startTime = startTime
-    if endTime:
-	quanXian.endTime = endTime 
+	      return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User {} don't use machine {}".format(userId, macAddress)}), 400
+    if money != -1:
+        quanXian.money = money
+    if startTime != None:
+        quanXian.startTime = startTime
+    if endTime != None:
+        quanXian.endTime = endTime
+
+    print quanXian.permission, quanXian.id, quanXian.startTime
     db.session.merge(quanXian)
     db.session.commit()
     
-    pushContent = {'Action': 'updateUserPermission', 'Permission': permisson, 'Mac': macAddress, 'Money':money, 'StartTime':startTime, 'EndTime':endTime}
+    pushContent = {'Action': 'updateUserPermission', 'Permission': permission, 'Mac': macAddress, 'Money':money, 'StartTime':startTime, 'EndTime':endTime}
     pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
     
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
