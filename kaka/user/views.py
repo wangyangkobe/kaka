@@ -132,7 +132,6 @@ def infoOperateMachine(args):
 
 @user_blueprint.route('/getMyPermissionDetail', methods=['POST'])
 @verify_request_json
-@verify_request_json
 @use_args({'UserId'   : fields.Int(required=True),
            'Token'    : fields.Str(required=True),
            'MacList'  : fields.Nested({'Mac' : fields.Str(required=True)}, required=True, many=True)},
