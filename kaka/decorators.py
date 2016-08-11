@@ -15,25 +15,23 @@ def verify_request_json(func):
 def verify_request_token(func):
     @wraps(func)
     def wrapped(*args, **kwargs):
-	userId = request.json.get('UserId', '')
-	phone  = request.json.get('Phone', '')
-	token  = request.json.get('Token', '')
-	user   = None
-	if phone:
+        userId = request.json.get('UserId', '')
+        phone  = request.json.get('Phone', '')
+        token  = request.json.get('Token', '')
+        user   = None
+        if phone:
             user = models.User.query.filter_by(phone=phone).first()
             if not user:
-       	        user = models.User.query.get(userId)
-	else:
-	    user = models.User.query.get(userId)
+                user = models.User.query.get(userId)
+        else:
+            user = models.User.query.get(userId)
         if not user:
             return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '不存在该用户!'}), 400
-        print user.token
-        print token
-    	if token != user.token:
+        if token != user.token:
             return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '输入的token错误!'}), 400
-    	return func(*args, **kwargs)
+        return func(*args, **kwargs)
     return wrapped
-	
+
 
 def verify_request_token1(func):
     @wraps(func)

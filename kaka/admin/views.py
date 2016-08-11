@@ -109,7 +109,7 @@ def updateUserPermission(args):
     quanXian = QuanXian.query.filter_by(userId=userId, machineId=machine.id).order_by('id desc').first()
     quanXian.permission = permission
     if not quanXian:
-	      return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User {} don't use machine {}".format(userId, macAddress)}), 400
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User {} don't use machine {}".format(userId, macAddress)}), 400
     if money != -1:
         quanXian.money = money
     if startTime != None:

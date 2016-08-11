@@ -105,7 +105,11 @@ def queryApplyings(args):
     userId = args.get('UserId')
     result = []
     for shenQing in ShenQing.query.filter_by(userId=userId):
-        result.append(shenQing.toJson())
+        content = shenQing.toJson()
+        machine = Machine.query.get(shenQing.machineId)
+        content['machineName'] = machine.machineName
+        content['mac'] = machine.macAddress
+        result.append(content)
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'Applyings': result}), 200
 
 @user_blueprint.route('/infoOperateMachine', methods=['POST'])
