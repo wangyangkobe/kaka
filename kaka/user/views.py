@@ -10,7 +10,6 @@ import json
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
 user_blueprint = Blueprint('user', __name__)
 
-    
 @user_blueprint.route('/applyPermission', methods=['POST'])
 @verify_request_json
 @use_args({'UserId'   : fields.Int(),
@@ -53,6 +52,7 @@ def applyPermission(args):
     pushContent['UserName'] = user.userName
     pushContent['Phone'] = user.phone
     pushContent['Action'] = 'applyPermission'
+    pushContent['ShenQingId'] = shenQing.id
     pushMessageToSingle(tokenList, TransmissionTemplateDemo( json.dumps(pushContent) ))
     
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '申请成功!', 'ApplyDetail': shenQing.toJson()}), 200

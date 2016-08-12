@@ -177,7 +177,6 @@ def getNewRequest(args):
     requestList = []
     for shenQing in ShenQing.query.filter_by(statusCode=0):
         result = shenQing.toJson()
-        result.pop('id', None)
         result['Machine'] = Machine.query.get(shenQing.machineId).toJson()
         result['User']    = User.query.get(shenQing.userId).toJson()
         result.pop('userId', None)
@@ -302,3 +301,23 @@ def getMachineDetailInfo(args):
         return  jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MachineInfo': machine.toJson()}), 200
     else:
         return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,机器mac={}不存在!'.format(mac)}), 400
+
+@admin_blueprint.route('/updateShenQingStatus', methods=['POST'])
+@verify_request_json
+@use_args({'UserId'    : fields.Int(required=True),
+           'Token'     : fields.Str(required=True),
+           'ShenQingId': fields.Int(required=True),
+           'Status'    : fields.Int(required=True, validate=lambda value: value in [-1, 1])},
+          locations = ('json',))
+@verify_request_token
+def updateShenQingStatus(args):
+    sQingId = args.get('ShenQingId', -1)
+    sQing   = ShenQing.query.get(sQingId)
+    status  = args.get('Status') 
+    if sQing:
+        sQing.status = status
+        db.session.merge(sQing)
+        db.session.commit
+        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
+    else:
+        return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,申请ShenQingId={}不存在!'.format(sQingId)}), 400
