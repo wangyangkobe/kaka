@@ -5,6 +5,7 @@ from kaka import db, logger
 from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
 from webargs.flaskparser import use_args
+import json
 
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
 user_blueprint = Blueprint('user', __name__)
@@ -51,7 +52,8 @@ def applyPermission(args):
     pushContent.pop('Token', None)
     pushContent['UserName'] = user.userName
     pushContent['Phone'] = user.phone
-    pushMessageToSingle(tokenList, TransmissionTemplateDemo(pushContent))
+    pushContent['Action'] = 'applyPermission'
+    pushMessageToSingle(tokenList, TransmissionTemplateDemo( json.dumps(pushContent) ))
     
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '申请成功!', 'ApplyDetail': shenQing.toJson()}), 200
 

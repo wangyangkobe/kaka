@@ -23,7 +23,7 @@ push = IGeTui(HOST, APPKEY, MASTERSECRET)
 # 透传模板动作内容
 def TransmissionTemplateDemo(content):
     template = TransmissionTemplate()
-    template.transmissionType = 1
+    template.transmissionType = 2
     template.appId = APPID
     template.appKey = APPKEY
     template.transmissionContent = content #'请填入透传内容'

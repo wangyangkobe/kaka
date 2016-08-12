@@ -6,6 +6,7 @@ from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
 from webargs.flaskparser import use_args
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
+import json
 
 admin_blueprint = Blueprint('admin', __name__)
     
@@ -73,7 +74,7 @@ def addUserPermission(args):
     db.session.commit()
     
     pushContent = {'Action': 'addUserPermission', 'Permission': permisson, 'Mac': macAddress, 'StartTime': startTime, 'EndTime': endTime, 'Money': money}
-    pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
+    pushMessageToSingle([user.pushToken], TransmissionTemplateDemo( json.dumps(pushContent) ))
     
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
 
@@ -85,7 +86,7 @@ def addUserPermission(args):
            'Token'    : fields.Str(required=True),
            'UserPermissionList' : fields.Nested({'Mac'        : fields.Str(required=True),
                                                  'UserId'     : fields.Int(required=True),
-						 'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
+                                                 'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                                  'EndTime'    : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                                  'Money'      : fields.Float(),
                                                  'Permission' : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3])}, required=True)},
@@ -122,7 +123,7 @@ def updateUserPermission(args):
     db.session.commit()
     
     pushContent = {'Action': 'updateUserPermission', 'Permission': permission, 'Mac': macAddress, 'Money':money, 'StartTime':startTime, 'EndTime':endTime}
-    pushMessageToSingle([user.pushToken], TransmissionTemplateDemo(pushContent))
+    pushMessageToSingle([user.pushToken], TransmissionTemplateDemo( json.dumps(pushContent) ))
     
     return jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!'}), 200
 
@@ -138,23 +139,31 @@ def updateUserPermission(args):
 def getMachineLog(args):
     macList = args.get('MacList')
     manageMachines = []
-    for quanXian in QuanXian.query.filter(userId=args.get('UserId')):
+    for quanXian in QuanXian.query.filter_by(userId=args.get('UserId')):
         if quanXian.permission != 0:
             manageMachines.append(quanXian.machineId)
     machineLog = []
+    result = []
     for mac in macList:
         if mac.get('Mac') == 'All':
-            machineLog.extend([element.toJson() for element in MachineUsage.query.all() if element.machineId in manageMachines])
+            for element in MachineUsage.query.all():
+                if element.machineId in manageMachines:
+                    result.append(element)
         else:
             machine = Machine.query.filter_by(macAddress=mac.get('Mac')).first()
             if machine:
                 for machineUsage in MachineUsage.query.filter_by(machineId=machine.id):
-                    if machineUsage.machieId in manageMachines:
-                        machineUsage = machineUsage.toJson()
-                        machineUsage.pop('id', None)
-                        machineLog.append(machineUsage)
+                    if machineUsage.machineId in manageMachines:
+                        result.append(machineUsage)
             else:
                 return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(mac.get('Mac'))}), 400
+    for element in result:
+        machineUsage = element.toJson()
+        machineUsage['Machine'] = Machine.query.get(element.machineId).toJson()
+        machineUsage['User']    = User.query.get(element.userId).toJson()
+        machineUsage.pop('userId', None)
+        machineUsage.pop('machineId', None)
+        machineLog.append(machineUsage)
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MachineLog': machineLog}), 200
 
 
@@ -169,6 +178,10 @@ def getNewRequest(args):
     for shenQing in ShenQing.query.filter_by(statusCode=0):
         result = shenQing.toJson()
         result.pop('id', None)
+        result['Machine'] = Machine.query.get(shenQing.machineId).toJson()
+        result['User']    = User.query.get(shenQing.userId).toJson()
+        result.pop('userId', None)
+        result.pop('machineId', None)
         requestList.append(result)
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'Request': requestList}), 200
 
@@ -242,9 +255,13 @@ def getUserLog(args):
         else:
             if not User.query.get(user.get('UserId')):
                 return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,用户id={}不存在!'.format(user.get('UserId'))}), 400
-            for machineUsage in MachineUsage.query.filter_by(userId=user.get('UserId')):
-                machineUsage = machineUsage.toJson()
+            for element in MachineUsage.query.filter_by(userId=user.get('UserId')):
+                machineUsage = element.toJson()
                 machineUsage.pop('id', None)
+                machineUsage['Machine'] = Machine.query.get(element.machineId).toJson()
+                machineUsage['User']    = User.query.get(element.userId).toJson()
+                machineUsage.pop('userId', None)
+                machineUsage.pop('machineId', None)
                 userLog.append(machineUsage)
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'UserLog': userLog}), 200
 

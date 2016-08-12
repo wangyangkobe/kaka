@@ -185,7 +185,7 @@ class MachineUsage(db.Model):
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId     = db.Column(db.Integer, db.ForeignKey('user.id'))
     machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
-    action     = db.Column(db.String(20), nullable=True)  #1代表开始使用， 1代表停止使用
+    action     = db.Column(db.String(20), nullable=True)  #0代表开始使用，1代表停止使用
     actiomTime = db.Column(db.DateTime)
     
     def __init__(self, userId, machineId, action=None, actionTime=datetime.datetime.utcnow()):
