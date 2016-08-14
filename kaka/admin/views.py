@@ -318,6 +318,10 @@ def updateShenQingStatus(args):
         sQing.status = status
         db.session.merge(sQing)
         db.session.commit
+        user = User.query.get(sQing.userId)
+        machine = Machine.query.get(sQing.machineId)
+        pushContent = {'Action': 'updateShenQingStatus', 'Status': status, 'Machine' : machine.toJson()}
+        pushMessageToSingle([user.pushToken], TransmissionTemplateDemo( json.dumps(pushContent) ))
         return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
     else:
         return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,申请ShenQingId={}不存在!'.format(sQingId)}), 400

@@ -7,6 +7,7 @@ from webargs import fields
 from webargs.flaskparser import use_args
 from webargs.core import ValidationError
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
+import json
 
 api_blueprint = Blueprint('api', __name__)
  
@@ -75,7 +76,7 @@ def login(args):
 
         if oldPushToken and oldPushToken != user.pushToken:
             pushContent = {'Phone': phone, 'Action': 're-loggin', 'Msg': u'user change phone to re-loggin'}
-            pushMessageToSingle([oldPushToken], TransmissionTemplateDemo(pushContent))
+            pushMessageToSingle([oldPushToken], TransmissionTemplateDemo( json.dumps(pushContent) ))
 
         return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '登录成功!', 'User': userJson}), 200
     else:
