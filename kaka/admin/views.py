@@ -53,18 +53,17 @@ def addMachines(args):
           locations = ('json',))
 @verify_request_token
 def addUserPermission(args):
-    userId = args.get('UserId', '')
-    phone  = args.get('Phone', '')
-    token  = args.get('Token', '')
-    user   = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)  
     userList = request.get_json().get("UserList")
-    userId   = user.id
+    userId   = userList.get('UserId', '')
+    user     = User.query.get(userId)
+    if not user:
+        return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}}), 400
     macAddress = userList.get('Mac', '')
     machine    = Machine.getMachineByMac(macAddress)
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
     
-    permisson = userList.get('Permission')
+    permisson  = userList.get('Permission')
     startTime  = userList.get('StartTime', None) 
     endTime    = userList.get('EndTime', None) 
     money      = userList.get('Money', 0.0)
@@ -315,9 +314,9 @@ def updateShenQingStatus(args):
     sQing   = ShenQing.query.get(sQingId)
     status  = args.get('Status') 
     if sQing:
-        sQing.status = status
+        sQing.statusCode = status
         db.session.merge(sQing)
-        db.session.commit
+        db.session.commit()
         user = User.query.get(sQing.userId)
         machine = Machine.query.get(sQing.machineId)
         pushContent = {'Action': 'updateShenQingStatus', 'Status': status, 'Machine' : machine.toJson()}
