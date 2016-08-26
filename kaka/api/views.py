@@ -82,7 +82,19 @@ def login(args):
     else:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '密码错误'}), 400 
 
-
+@api_blueprint.route('/logout', methods=['POST'])
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+		   'Token'    : fields.Str(required=True)},
+          locations = ('json',))
+def logout(args):
+	user = User.query.get(args.get('UserId'))
+	user.pushToken = ""
+	user.token = ""
+	db.session.merge(user)
+	db.session.commit()
+	return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '注销成功!'}), 200  
+	
 def verifyMachines(machines):
     if isinstance(machines, list):
         for machine in machines:
