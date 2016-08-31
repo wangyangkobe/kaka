@@ -45,7 +45,8 @@ def addMachines(args):
            'Phone'    : fields.Str(), 
            'Token'    : fields.Str(required=True),
            'UserList' : fields.Nested({'Mac'        : fields.Str(required=True),
-                                       'UserId'     : fields.Int(required=True),
+                                       'UserId'     : fields.Int(),
+                                       'Phone'      : fields.Str(),
                                        'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                        'EndTime'    : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                        'Money'      : fields.Float(), 
@@ -54,10 +55,14 @@ def addMachines(args):
 @verify_request_token
 def addUserPermission(args):
     userList = request.get_json().get("UserList")
-    userId   = userList.get('UserId', '')
-    user     = User.query.get(userId)
-    if not user:
+    userId   = userList.get('UserId', None)
+    phone    = userList.get('Phone', None)
+    user     = User.getUserByIdOrPhoneOrMail(userId, phone)
+    if not user and not userId:
         return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}}), 400
+    if not user and not phone:
+        return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}}), 400
+        
     macAddress = userList.get('Mac', '')
     machine    = Machine.getMachineByMac(macAddress)
     if not machine:
@@ -68,7 +73,7 @@ def addUserPermission(args):
     endTime    = userList.get('EndTime', None) 
     money      = userList.get('Money', 0.0)
     
-    quanXian = QuanXian(userId, machine.id, permission=permisson, startTime=startTime, endTime=endTime, money=money)
+    quanXian = QuanXian(user.id, machine.id, permission=permisson, startTime=startTime, endTime=endTime, money=money)
     db.session.merge(quanXian)
     db.session.commit()
     
@@ -84,7 +89,8 @@ def addUserPermission(args):
            'Phone'    : fields.Str(),
            'Token'    : fields.Str(required=True),
            'UserPermissionList' : fields.Nested({'Mac'        : fields.Str(required=True),
-                                                 'UserId'     : fields.Int(required=True),
+                                                 'UserId'     : fields.Int(),
+												 'Phone'      : fields.Str(),
                                                  'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                                  'EndTime'    : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                                  'Money'      : fields.Float(),
@@ -93,10 +99,14 @@ def addUserPermission(args):
 @verify_request_token
 def updateUserPermission(args):
     userPermissonList = request.get_json().get("UserPermissionList")
-    userId = userPermissonList.get('UserId')
-    user = User.query.get(userId)
-    if not user:
-        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "UserId {} does't exist".format(userId)}), 400
+    userId = userPermissonList.get('UserId', None)
+    phone  = userList.get('Phone', None)
+    user   = User.getUserByIdOrPhoneOrMail(userId, phone)	
+    if not user and not userId:
+        return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}}), 400
+    if not user and not phone:
+        return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}}), 400
+		
     macAddress = userPermissonList.get('Mac', '')
     machine = Machine.getMachineByMac(macAddress)
     if not machine:
@@ -106,10 +116,10 @@ def updateUserPermission(args):
     endTime    = userPermissonList.get('EndTime', None)
     money      = userPermissonList.get('Money', -1)
 
-    quanXian = QuanXian.query.filter_by(userId=userId, machineId=machine.id).order_by('id desc').first()
+    quanXian = QuanXian.query.filter_by(userId=user.id, machineId=machine.id).order_by('id desc').first()
     quanXian.permission = permission
     if not quanXian:
-        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User {} don't use machine {}".format(userId, macAddress)}), 400
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User {} don't use machine {}".format(user.id, macAddress)}), 400
     if money != -1:
         quanXian.money = money
     if startTime != None:
