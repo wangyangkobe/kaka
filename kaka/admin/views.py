@@ -58,11 +58,12 @@ def addUserPermission(args):
     userId   = userList.get('UserId', None)
     phone    = userList.get('Phone', None)
     user     = User.getUserByIdOrPhoneOrMail(userId, phone)
-    if not user and not userId:
-        return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}}), 400
-    if not user and not phone:
-        return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}}), 400
-        
+    if not user:
+        if phone:
+            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}), 400
+        if userId:
+            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}), 400
+            
     macAddress = userList.get('Mac', '')
     machine    = Machine.getMachineByMac(macAddress)
     if not machine:
@@ -90,7 +91,7 @@ def addUserPermission(args):
            'Token'    : fields.Str(required=True),
            'UserPermissionList' : fields.Nested({'Mac'        : fields.Str(required=True),
                                                  'UserId'     : fields.Int(),
-												 'Phone'      : fields.Str(),
+                                                 'Phone'      : fields.Str(),
                                                  'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                                  'EndTime'    : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                                  'Money'      : fields.Float(),
@@ -100,13 +101,14 @@ def addUserPermission(args):
 def updateUserPermission(args):
     userPermissonList = request.get_json().get("UserPermissionList")
     userId = userPermissonList.get('UserId', None)
-    phone  = userList.get('Phone', None)
-    user   = User.getUserByIdOrPhoneOrMail(userId, phone)	
-    if not user and not userId:
-        return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}}), 400
-    if not user and not phone:
-        return jsonify({{'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}}), 400
-		
+    phone  = userPermissonList.get('Phone',  None)
+    user   = User.getUserByIdOrPhoneOrMail(userId, phone)   
+    if not user:
+        if phone:
+            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}), 400
+        if userId:
+            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}), 400
+        
     macAddress = userPermissonList.get('Mac', '')
     machine = Machine.getMachineByMac(macAddress)
     if not machine:
