@@ -85,16 +85,16 @@ def login(args):
 @api_blueprint.route('/logout', methods=['POST'])
 @verify_request_json
 @use_args({'UserId'   : fields.Int(required=True),
-		   'Token'    : fields.Str(required=True)},
+           'Token'    : fields.Str(required=True)},
           locations = ('json',))
 def logout(args):
-	user = User.query.get(args.get('UserId'))
-	user.pushToken = ""
-	user.token = ""
-	db.session.merge(user)
-	db.session.commit()
-	return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '注销成功!'}), 200  
-	
+    user = User.query.get(args.get('UserId'))
+    user.pushToken = ""
+    user.token = ""
+    db.session.merge(user)
+    db.session.commit()
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '注销成功!'}), 200  
+    
 def verifyMachines(machines):
     if isinstance(machines, list):
         for machine in machines:
@@ -119,7 +119,7 @@ def delMachines(args):
         macAddress = machine.get('Mac')
         if macAddress == 'All':
             for quanXian in user.quanXians:
-                if quanXian.permission == 0:
+                if quanXian.permission in [3,4,5,6]:
                     pass
                 else:
                     Machine.query.filter_by(id=quanXian.machineId).delete()
@@ -127,7 +127,7 @@ def delMachines(args):
             machine = Machine.query.filter_by(macAddress=macAddress).first()
             if not machine:
                 return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '操作失败,机器{}不存在!'.format(macAddress)}), 400 
-            if QuanXian.query.filter(QuanXian.userId==user.id).filter(QuanXian.machineId==machine.id).filter(QuanXian.permission!=0):
+            if QuanXian.query.filter(QuanXian.userId==user.id).filter(QuanXian.machineId==machine.id).filter(QuanXian.permission.in_( (0,1,2) )):
                 Machine.query.filter_by(id=machine.id).delete()
             else:
                 return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '您是普通用户,无权删除机器{}!'.format(macAddress)}), 400 

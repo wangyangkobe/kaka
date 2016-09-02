@@ -16,7 +16,7 @@ user_blueprint = Blueprint('user', __name__)
            'Phone'    : fields.Str(),
            'Token'    : fields.Str(required=True),
            'ApplyDetail' : fields.Nested({"Mac"         : fields.Str(required=True),
-                                          "Permission"  : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3]),
+                                          "Permission"  : fields.Int(required=True),
                                           'StartTime'   : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                           'EndTime'     : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                           'Money'       : fields.Float(), 
@@ -43,7 +43,7 @@ def applyPermission(args):
     db.session.add(shenQing)
     db.session.commit()
     
-    managerIds = [element.userId for element in QuanXian.query.filter_by(machineId=machine.id) if element.permission in [1, 2]]
+    managerIds = [element.userId for element in QuanXian.query.filter_by(machineId=machine.id) if element.permission in [User.SuperAdmin, User.Admin]]
     tokenList = filter(lambda x : len(x) > 0, [User.query.get(id).pushToken for id in managerIds])
     logger.info("managerIds = {}\ntokens ={}".format(managerIds, tokenList))
     

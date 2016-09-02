@@ -50,7 +50,7 @@ def addMachines(args):
                                        'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                        'EndTime'    : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                        'Money'      : fields.Float(), 
-                                       'Permission' : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3])}, required=True)},
+                                       'Permission' : fields.Int(required=True)}, required=True)},
           locations = ('json',))
 @verify_request_token
 def addUserPermission(args):
@@ -95,7 +95,7 @@ def addUserPermission(args):
                                                  'StartTime'  : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                                  'EndTime'    : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                                  'Money'      : fields.Float(),
-                                                 'Permission' : fields.Int(required=True, validate=lambda value: value in [0, 1, 2, 3])}, required=True)},
+                                                 'Permission' : fields.Int(required=True)}, required=True)},
           locations = ('json',))
 @verify_request_token
 def updateUserPermission(args):
@@ -128,8 +128,7 @@ def updateUserPermission(args):
         quanXian.startTime = startTime
     if endTime != None:
         quanXian.endTime = endTime
-
-    print quanXian.permission, quanXian.id, quanXian.startTime
+        
     db.session.merge(quanXian)
     db.session.commit()
     
@@ -151,7 +150,7 @@ def getMachineLog(args):
     macList = args.get('MacList')
     manageMachines = []
     for quanXian in QuanXian.query.filter_by(userId=args.get('UserId')):
-        if quanXian.permission != 0:
+        if quanXian.permission in [User.Producer, User.SuperAdmin, User.Admin]:
             manageMachines.append(quanXian.machineId)
     machineLog = []
     result = []
@@ -208,7 +207,7 @@ def getNewRequest(args):
 def getMachinePermissionDetail(args):
     userId = args.get('UserId')
     phone  = args.get('PhoneList').get('Phone')
-    ownMachines = QuanXian.query.filter(QuanXian.userId == userId).filter(QuanXian.permission != 0)
+    ownMachines = QuanXian.query.filter(QuanXian.userId == userId).filter( QuanXian.permission.in_((0,1,2)) )
     ownMachineIds = [element.machineId for element in ownMachines]
     userIds = []
     if phone == 'All':

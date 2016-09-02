@@ -64,17 +64,17 @@ class User(db.Model, UserMixin):
         return User.query.filter_by(id=userid, token=token).count() > 0
     @staticmethod
     def getUserByIdOrPhoneOrMail(id=None, phone=None, mail=None):
-	if phone:
-	    user = User.query.filter_by(phone=phone).first()
-	    if user:
-		return user;
-	    else:
-		if id:
-		    return User.query.get(id)
-	elif id:
-	    return User.query.get(id)
-	else:
-	    return None    
+        if phone:
+            user = User.query.filter_by(phone=phone).first()
+            if user:
+                return user;
+            else:
+                if id:
+                    return User.query.get(id)
+        elif id:
+            return User.query.get(id)
+        else:
+            return None        
     def toJson(self):
         return dict((c.name,
                      getattr(self, c.name))
@@ -112,26 +112,30 @@ class Machine(db.Model):
         
 class QuanXian(db.Model):
     __tablename__  = 'user_machine'
+    # 0是厂家，1是超级管理员，2是管理员，3是普通用户，4是访客，5是无权，6是匿名
+    Producer, SuperAdmin, Admin, User, Vistor, NoRight, Anonymous = (0, 1, 2, 3, 4, 5, 6) 
     #__table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
     machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete='CASCADE'))
-    permission = db.Column(db.Integer, default=0) # 0代表普通用户，1代表管理员，2代表超级管理员，3代表厂家
+    permission = db.Column(db.Integer, default=User)
     reason     = db.Column(db.String(200))
     startTime  = db.Column(db.DateTime)
     endTime    = db.Column(db.DateTime)
     money      = db.Column(db.Float, default=0.0)
     machineName= db.Column(db.String(200)) #用户对机器的命名
     
-    def __init__(self, userId, machineId, permission=0, reason=None, startTime=None, endTime=None, money = 0, machineName=0):
+    def __init__(self, userId, machineId, permission=User, 
+                reason=None, startTime=None, endTime=None, 
+                money = 0, machineName=0):
         self.userId = userId
         self.machineId = machineId
         self.permission = permission
         self.reason = reason
         if startTime:
             self.startTime = startTime
-	    if endTime:
-	        self.endTime = endTime
+        if endTime:
+            self.endTime = endTime
         self.money = money
         self.machineName = machineName
         
@@ -158,7 +162,9 @@ class ShenQing(db.Model):
     endTime    = db.Column(db.DateTime) # 结束使用该机器的时间
     money      = db.Column(db.Float, default=0.0)
     
-    def __init__(self, userId, machineId, statusCode=0, needPermission=-1, reason='', startTime=None, endTime=None, money=0.0, time=datetime.datetime.utcnow()):
+    def __init__(self, userId, machineId, statusCode=0, needPermission=-1,
+                reason='', startTime=None, endTime=None, money=0.0, 
+                time=datetime.datetime.utcnow()):
         self.userId = userId
         self.machineId = machineId
         self.statusCode = statusCode
