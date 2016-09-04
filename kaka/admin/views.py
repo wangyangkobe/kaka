@@ -150,7 +150,7 @@ def getMachineLog(args):
     macList = args.get('MacList')
     manageMachines = []
     for quanXian in QuanXian.query.filter_by(userId=args.get('UserId')):
-        if quanXian.permission in [User.Producer, User.SuperAdmin, User.Admin]:
+        if quanXian.permission in [QuanXian.Producer, QuanXian.SuperAdmin, QuanXian.Admin]:
             manageMachines.append(quanXian.machineId)
     machineLog = []
     result = []

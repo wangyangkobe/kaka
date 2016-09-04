@@ -43,7 +43,7 @@ def applyPermission(args):
     db.session.add(shenQing)
     db.session.commit()
     
-    managerIds = [element.userId for element in QuanXian.query.filter_by(machineId=machine.id) if element.permission in [User.SuperAdmin, User.Admin]]
+    managerIds = [element.userId for element in QuanXian.query.filter_by(machineId=machine.id) if element.permission in [QuanXian.SuperAdmin, QuanXian.Admin]]
     tokenList = filter(lambda x : len(x) > 0, [User.query.get(id).pushToken for id in managerIds])
     logger.info("managerIds = {}\ntokens ={}".format(managerIds, tokenList))
     
