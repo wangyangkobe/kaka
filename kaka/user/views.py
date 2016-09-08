@@ -6,6 +6,7 @@ from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
 from webargs.flaskparser import use_args
 import json
+from kaka.lib import formatTime
 
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
 user_blueprint = Blueprint('user', __name__)
@@ -151,12 +152,12 @@ def getMyPermissionDetail(args):
         if mac.get('Mac') == 'All':
             for quanXian in QuanXian.query.filter_by(userId=userId):
                 machine = Machine.query.get(quanXian.machineId)
-                result.append({'Permission': quanXian.permission, 'Machine': machine.toJson()})
+                result.append({'Permission': quanXian.permission, 'Money':quanXian.money, 'Machine': machine.toJson(), 'StartTime': formatTime(quanXian.startTime), 'EndTime': formatTime(quanXian.endTime)})
         else:
             mac     = mac.get('Mac')
             machine = Machine.query.filter_by(macAddress=mac).first()
             if not machine:
                 return jsonify({'Status': 'Failded', 'StatusCode': -1, 'Msg': '操作失败, 无法查看机器{}!'.format(mac)}), 400
             for quanXian in QuanXian.query.filter_by(userId=userId, machineId=machine.id):
-                result.append({'Permission': quanXian.permission, 'Machine': machine.toJson()})
+                result.append({'Permission': quanXian.permission, 'Money':quanXian.money, 'Machine': machine.toJson(), 'StartTime': formatTime(quanXian.startTime), 'EndTime': formatTime(quanXian.endTime)})
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': result}), 200

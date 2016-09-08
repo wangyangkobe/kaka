@@ -96,3 +96,9 @@ def pushMessageToList(tokenList, template):
     contentId = push.getContentId(message)
     ret = push.pushMessageToList(contentId, arr)
     logger.info("pushMessageToList result = {}".format(ret))
+
+def formatTime(time):
+	if time:
+		return time.strftime("%Y-%m-%d %H:%M")
+	else:
+		return time
