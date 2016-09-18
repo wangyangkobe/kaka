@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:root1234@localhost/kaka_db?charset=utf8'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:hJexOiChC40H@127.0.0.1/kaka_db?charset=utf8'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 app.secret_key = 'super secret string'
 db = SQLAlchemy(app)
@@ -17,9 +17,9 @@ os.environ['needDetails'] = 'true'
 # http的域名
 HOST = 'http://sdk.open.api.igexin.com/apiex.htm'
 
-APPKEY = "TDRjKIDi5j5hAa2HZSsKH9"
-APPID = "4Od62dF1jO6OilfYHRywa5"
-MASTERSECRET = "10TPhxXAoB604xqlW2ORC7"
+APPKEY = "13MgiwaOIQ8qri26k3OQn9"
+APPID = "ojWTJdopem7HMZaJHCOc0A"
+MASTERSECRET = "3CW64LCMeA7vhuwb5EJxI2"
 CID = ""
 Alias = '请输入别名'
 DEVICETOKEN = ""
