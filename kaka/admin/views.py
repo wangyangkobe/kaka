@@ -33,7 +33,7 @@ def addMachines(args):
         machine = Machine(**machine)
         db.session.add(machine)
         db.session.flush()
-        db.session.add(QuanXian(user.id, machine.id, permission=1))
+        db.session.add(QuanXian(user.id, machine.id, permission=QuanXian.Admin))
         db.session.commit()
         return  jsonify({'Status' :  'Success', 'StatusCode':0, 'Msg' : '操作成功!', 'Machine': machine.toJson()}), 200
     else:
