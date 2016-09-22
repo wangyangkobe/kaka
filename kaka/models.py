@@ -5,6 +5,7 @@ from flask_login import UserMixin, make_secure_token
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.schema import PrimaryKeyConstraint
 from webargs.core import ValidationError
+import uuid
     
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -54,10 +55,7 @@ class User(db.Model, UserMixin):
         return check_password_hash(self.passWord, password)
     
     def get_auth_token(self):
-        if self.registerType == 0:
-            return make_secure_token(self.phone, key='deterministic')
-        if self.registerType == 1:
-            return make_secure_token(self.email, key='deterministic')
+        return uuid.uuid4().hex 
         
     @staticmethod
     def checkUserToken(userid, token):
