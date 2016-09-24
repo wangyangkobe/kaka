@@ -74,7 +74,7 @@ def login(args):
         userJson = user.toJson()
         userJson.pop('passWord', None),
 
-        if oldPushToken and oldPushToken != user.pushToken:
+        if oldPushToken != user.pushToken:
             pushContent = {'Phone': phone, 'Action': 're-loggin', 'Msg': u'user change phone to re-loggin'}
             pushMessageToSingle([oldPushToken], TransmissionTemplateDemo( json.dumps(pushContent) ))
 
