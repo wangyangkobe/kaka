@@ -5,7 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:hJexOiChC40H@127.0.0.1/kaka_db?charset=utf8'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:root1234@127.0.0.1/kaka_db?charset=utf8'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 app.secret_key = 'super secret string'
 db = SQLAlchemy(app)

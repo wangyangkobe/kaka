@@ -8,7 +8,9 @@ import logging
 import requests
 import os 
 
-logging.basicConfig(level = logging.INFO)
+logging.basicConfig(level   = logging.INFO, 
+                    format  = '%(asctime)s %(levelname)-8s %(message)s',
+                    datefmt = '%a, %d %b %Y %H:%M:%S')
 logger = logging.getLogger('monitor') 
 
 sender     = 'wy250801860@163.com'  
@@ -26,11 +28,9 @@ def sendMail(content):
     msg['to']      = receiver
     try:  
         smtp = smtplib.SMTP()
-        smtp.set_debuglevel(1)  
+        #smtp.set_debuglevel(1)  
         smtp.connect('smtp.163.com')  
         smtp.login(username, password)
-        print msg
-        print msg.as_string()  
         smtp.sendmail(sender, receiver, msg.as_string())  
         smtp.quit()  
         logger.info('send mail successfully!')
@@ -38,7 +38,7 @@ def sendMail(content):
         logger.info('send mail failed!')
 
 developUrl = "https://139.224.3.149:5656/"
-productUrl = "https://139.224.3.149:8080/api"
+productUrl = "https://139.224.3.149:8080/"
 
 def checkServerStatus(url):
     try:
@@ -56,6 +56,7 @@ def checkServerStatus(url):
 if __name__ == '__main__':
     if not checkServerStatus(developUrl):
         sendMail(u"亲爱的管理员, 开发版服务器({})不可访问了，赶紧去看看吧!".format(developUrl))
+        os.system('bash /etc/init.d/kaka_test')
     if not checkServerStatus(productUrl):
         sendMail(u"亲爱的管理员, 正式版服务器({})不可访问了，服务器已经开始重启!".format(productUrl))
-        os.system("sudo reboot") 
+        os.system(r"bash /etc/init.d/kaka")

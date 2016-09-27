@@ -10,16 +10,13 @@ from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
 import json
 
 api_blueprint = Blueprint('api', __name__)
+
  
 def validateUserType(value):
     if  value >=0 and value <=3:
         return True
     else:
         raise ValidationError('The userType field is {}, should be 0,1,2,3'.format(value))
-    
-@api_blueprint.route('/', methods=['GET'])
-def test():
-    return "Hello world!"
     
 @api_blueprint.route('/register', methods=['POST'])
 @verify_request_json
