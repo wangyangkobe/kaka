@@ -86,7 +86,6 @@ def login(args):
           locations = ('json',))
 def logout(args):
     user = User.query.get(args.get('UserId'))
-    user.pushToken = ""
     user.token = ""
     db.session.merge(user)
     db.session.commit()
