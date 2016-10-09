@@ -74,9 +74,10 @@ class User(db.Model, UserMixin):
         else:
             return None        
     def toJson(self):
-        return dict((c.name,
-                     getattr(self, c.name))
-                     for c in self.__table__.columns)
+        result = dict((c.name, getattr(self, c.name)) for c in self.__table__.columns)
+        if self.create_time:
+            result['create_time'] = self.create_time.strftime("%Y-%m-%d %H:%M")
+        return result 
         
 class Machine(db.Model):
     __tablename__ = 'machine'
@@ -199,6 +200,7 @@ class MachineUsage(db.Model):
         self.actiomTime = actionTime
         
     def toJson(self):
-        return dict((c.name,
-                     getattr(self, c.name))
-                     for c in self.__table__.columns)
+        result = dict( (c.name, getattr(self, c.name)) for c in self.__table__.columns )
+        if self.actiomTime:
+            result['actiomTime'] = self.actiomTime.strftime("%Y-%m-%d %H:%M")
+        return result
