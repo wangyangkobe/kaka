@@ -1,0 +1,12 @@
+#!/bin/bash
+
+#cd /var/www/demoapp/kaka
+
+#sudo ./kaka.fcgi &
+
+#chmod 777 /var/www/demoapp/kaka.sock 
+
+
+/usr/local/bin/gunicorn -w 4 -b 127.0.0.1:5001 --pythonpath /root/kaka_test/kaka/ --daemon run_server:app
+
+#sudo python /root/kaka_test/kaka/run_server.py &

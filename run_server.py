@@ -10,4 +10,4 @@ def index():
         return '亲爱的，欢迎来到开发版!'
       
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=False, threaded=False)
+    app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
