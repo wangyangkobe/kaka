@@ -10,7 +10,7 @@
 * [Gunicorn](http://gunicorn.org/)
 * [Nginx](https://nginx.org/en/)
 * Congiure:  
-  [kaka_nginx.conf](https://github.com/wangyangkobe/kaka/blob/master/kaka_nginx.conf)
+  [kaka_nginx.conf](https://github.com/wangyangkobe/kaka/blob/master/kaka_nginx.conf)  
   [kaka_test](https://github.com/wangyangkobe/kaka/blob/master/kaka_test)
   
 
