@@ -1,7 +1,8 @@
 # kaka
 
 #### 需求  
-* API接口: [API.pdf] (https://github.com/wangyangkobe/kaka/blob/master/API.pdf)
+* API接口: [API.pdf] (https://github.com/wangyangkobe/kaka/blob/master/API.pdf)  
+
 #### 数据库
 * ORM      :  [sqlalchemy](http://www.sqlalchemy.org/)
 * Migration:  [Flask-Migrate](http://flask-migrate.readthedocs.io/en/latest/)
