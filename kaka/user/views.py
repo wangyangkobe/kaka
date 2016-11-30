@@ -6,9 +6,9 @@ from kaka.decorators import verify_request_json, verify_request_token
 from webargs import fields
 from webargs.flaskparser import use_args
 import json
-from kaka.lib import formatTime
-
+from kaka.lib import formatTime, getPassWordQuestion
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
+
 user_blueprint = Blueprint('user', __name__)
 
 @user_blueprint.route('/applyPermission', methods=['POST'])
@@ -161,3 +161,22 @@ def getMyPermissionDetail(args):
             for quanXian in QuanXian.query.filter_by(userId=userId, machineId=machine.id):
                 result.append({'Permission': quanXian.permission, 'Money':quanXian.money, 'Machine': machine.toJson(), 'StartTime': formatTime(quanXian.startTime), 'EndTime': formatTime(quanXian.endTime)})
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'PermissionDetail': result}), 200
+
+@user_blueprint.route('/getPassWordQuestion')
+def getQuestion():
+    questions =  getPassWordQuestion()
+    return jsonify(questions)
+
+@user_blueprint.route('/setPassWordAnswer')
+@verify_request_json
+@use_args({'UserId', fields.Int(required=True),
+  "Token"： fields.Str(required=True),
+  "QuestionId": fields.Int(required=True),
+  "QuestionAnswer": fields.Str(required=True)},
+  locations = ('json',))
+@verify_request_token
+def setPassWordAnswer():
+    questionId = args.get('QuestionId')
+    questionAnswer = args.get('QuestionAnswer')
+    user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId'))
+    return ok

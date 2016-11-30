@@ -102,3 +102,10 @@ def formatTime(time):
 		return time.strftime("%Y-%m-%d %H:%M")
 	else:
 		return time
+
+def getPassWordQuestion():
+    questions = "您目前的姓名是?;您配偶的生日是?;您的学号（或工号）是?;您母亲的生日是?;您高中班主任的名字是?;您父亲的姓名是?;您小学班主任的名字是?;您父亲的生日是?;您配偶的姓名是?;您初中班主任的名字是?;您最熟悉的童年好友名字是?;您最熟悉的学校宿舍舍友名字是?;对您影响最大的人名字是?".split(";")
+    res = list()
+    for index, value in enumerate(questions, start=1):
+        res.append({'id': index, 'question': value})
+    return res
