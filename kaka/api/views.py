@@ -17,7 +17,7 @@ def validateUserType(value):
         return True
     else:
         raise ValidationError('The userType field is {}, should be 0,1,2,3'.format(value))
-    
+
 @api_blueprint.route('/register', methods=['POST'])
 @verify_request_json
 @use_args({'UserName'    : fields.Str(required=True),
@@ -130,3 +130,23 @@ def delMachines(args):
     db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200   
                 
+@api_blueprint.route('/updatePassword',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId'      : fields.Int(required=True),
+           'OldPassWord' : fields.Str(required=True),
+           'NewPassWord' : fields.Str(required=True)},
+          locations = ('json',))
+def updatePassword(args):
+    user = User.query.get(args.get('UserId'))
+    if user:
+        try:
+            user.updatePassWord(args.get('OldPassWord'), args.get('NewPassWord'))
+            db.session.merge(user)
+            db.session.commit()
+            return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
+        except ValueError, error:
+            logger.info('ValueError: errorMsg = {}'.format(error.message))
+            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': error.message}), 400
+    else:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "该用户不存在!"}), 400
+        

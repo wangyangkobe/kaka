@@ -335,3 +335,44 @@ def updateShenQingStatus(args):
         return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
     else:
         return jsonify({'Status': 'Success', 'StatusCode': -1, 'Msg': '操作失败,申请ShenQingId={}不存在!'.format(sQingId)}), 400
+
+@admin_blueprint.route('/updateMachineInfo', methods=['POST'])
+@verify_request_json
+@use_args({'UserId': fields.Int(required=True),
+           'Token' : fields.Str(required=True),
+           'MachineInfo': fields.Nested({"Mac"          : fields.Str(required=True),
+                                         "MachineName"  : fields.Str(),
+                                         "MachineMoney" : fields.Float(),
+                                         "AdminPass"    : fields.Str(),
+                                         "UserPass"     : fields.Str(),
+                                         "MachineType"  : fields.Int()}, required=True)
+           },
+          locations=('json',))
+@verify_request_token
+def updateMachineInfo(args):
+    userId = args.get("UserId", '')
+    user = User.getUserByIdOrPhoneOrMail(id=userId)
+    if not user:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "UserId {} does't exist".format(userId)}), 400
+    macAddress = args.get('MachineInfo').get('Mac')
+    machine = Machine.getMachineByMac(macAddress)
+    if not machine:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
+
+    res = []
+    for element in QuanXian.query.filter_by(userId=userId, machineId=machine.id):
+        if element.permission in [QuanXian.Producer, QuanXian.SuperAdmin, QuanXian.Admin]:
+            res.append(element)
+
+    if res == []:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': u"无权更新该机器的信息"}), 400
+
+    for fieldName in ['MachineName', 'MachineMoney', 'AdminPass', 'UserPass', 'MachineType']:
+        if args.get('MachineInfo').has_key(fieldName):
+            setattr(machine, fieldName[0].lower() + fieldName[1:], args.get('MachineInfo').get(fieldName))
+
+    db.session.merge(machine)
+    db.session.commit()
+
+    return jsonify({'Status':  'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'Machine': machine.toJson()}), 200
+    

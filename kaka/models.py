@@ -56,6 +56,12 @@ class User(db.Model, UserMixin):
     
     def get_auth_token(self):
         return uuid.uuid4().hex 
+    
+    def updatePassWord(self, oldPassWord, newPassWord):
+        if check_password_hash(self.passWord, oldPassWord):
+            self.passWord = generate_password_hash(newPassWord)
+        else:
+            raise ValueError("输入的原始密码 \"{}\" 错误!".format(oldPassWord))
         
     @staticmethod
     def checkUserToken(userid, token):
@@ -99,7 +105,7 @@ class Machine(db.Model):
         self.machineMoney = kargs.get('MachineMoney', 0.0)
         self.adminPass    = kargs.get('AdminPass', "")
         self.userPass     = kargs.get('UserPass', "")
-        
+    
     @staticmethod
     def getMachineByMac(macAddress):
         return Machine.query.filter_by(macAddress=macAddress).first()
