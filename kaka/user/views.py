@@ -184,3 +184,40 @@ def setPassWordAnswer(args):
     db.session.merge(user)
     db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
+
+@user_blueprint.route('/updatePassword',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId'         : fields.Int(),
+           "Phone"          : fields.Int(),
+           "Token"          : fields.Str(required=True),
+           "QuestionId"     : fields.Int(required=True),
+           "QuestionAnswer" : fields.Str(required=True),
+           'NewPassWord'    : fields.Str(required=True)},
+          locations = ('json',))
+@verify_request_token
+def updatePassword(args):
+    userId = args.get("UserId", '')
+    phone  = args.get('Phone', '')
+    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
+
+    if not user:
+        if phone:
+            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}), 400
+        if userId:
+            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}), 400
+
+    questionId = args.get('QuestionId')
+    questionAnswer = args.get('QuestionAnswer')
+    if (user.passWordQA != "") and (user.passWordQA == str(questionId) + ";" + questionAnswer):
+        try:
+            user.updatePassWord(args.get('NewPassWord'))
+            db.session.merge(user)
+            db.session.commit()
+            return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'User': user.toJson()}), 200
+        except ValueError, error:
+            logger.info('ValueError: errorMsg = {}'.format(error.message))
+            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': error.message}), 400
+    elif user.passWordQA == "":
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '你没有设置密码保护,无法重置密码!'}), 400
+    else:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "操作失败,输入的答案有误!"}), 400

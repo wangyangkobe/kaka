@@ -59,12 +59,9 @@ class User(db.Model, UserMixin):
     def get_auth_token(self):
         return uuid.uuid4().hex 
     
-    def updatePassWord(self, oldPassWord, newPassWord):
-        if check_password_hash(self.passWord, oldPassWord):
-            self.passWord = generate_password_hash(newPassWord)
-        else:
-            raise ValueError("输入的原始密码 \"{}\" 错误!".format(oldPassWord))
-        
+    def updatePassWord(self, newPassWord):
+        self.passWord = generate_password_hash(newPassWord)
+                
     @staticmethod
     def checkUserToken(userid, token):
         return User.query.filter_by(id=userid, token=token).count() > 0
