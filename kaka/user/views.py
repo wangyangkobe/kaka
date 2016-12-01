@@ -167,16 +167,18 @@ def getQuestion():
     questions =  getPassWordQuestion()
     return jsonify(questions)
 
+
 @user_blueprint.route('/setPassWordAnswer')
 @verify_request_json
-@use_args({'UserId', fields.Int(required=True),
-  "Token"： fields.Str(required=True),
-  "QuestionId": fields.Int(required=True),
-  "QuestionAnswer": fields.Str(required=True)},
-  locations = ('json',))
+@use_args({"UserId"         : fields.Int(required=True),
+           "Token"          : fields.Str(required=True),
+           "QuestionId"     : fields.Int(required=True),
+           "QuestionAnswer" : fields.Str(required=True)},
+          locations=('json',))
 @verify_request_token
 def setPassWordAnswer():
     questionId = args.get('QuestionId')
     questionAnswer = args.get('QuestionAnswer')
     user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId'))
-    return ok
+    user.passWordQA = "%d;%s".format(questionId, questionAnswer)
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200

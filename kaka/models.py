@@ -22,6 +22,7 @@ class User(db.Model, UserMixin):
     registerType = db.Column(db.Integer, unique=False) # 0为手机, 1为邮箱
     userMoney    = db.Column(db.Float)
     create_time  = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
+    passWordQA   = db.Column(db.String(100))
     
     quanXians   = db.relationship('QuanXian', cascade="all")
     
@@ -36,7 +37,8 @@ class User(db.Model, UserMixin):
         #self.userType   = kargs.get('UserType', 0)
         self.registerType = int(kargs.get('RegisterType', 0))
         self.userMoney   = kargs.get('UserMoney', 0.0)
-        
+        self.passWordQA  = kargs.get('PassWordQA', '')
+
     def verifyUser(self):
         if self.registerType == 0 and not self.phone:
             raise ValueError('手机注册，Phone不能为空!')
