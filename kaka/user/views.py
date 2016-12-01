@@ -168,7 +168,7 @@ def getQuestion():
     return jsonify(questions)
 
 
-@user_blueprint.route('/setPassWordAnswer')
+@user_blueprint.route('/setPassWordAnswer', methods=['POST'])
 @verify_request_json
 @use_args({"UserId"         : fields.Int(required=True),
            "Token"          : fields.Str(required=True),
@@ -176,9 +176,11 @@ def getQuestion():
            "QuestionAnswer" : fields.Str(required=True)},
           locations=('json',))
 @verify_request_token
-def setPassWordAnswer():
+def setPassWordAnswer(args):
     questionId = args.get('QuestionId')
     questionAnswer = args.get('QuestionAnswer')
     user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId'))
-    user.passWordQA = "%d;%s".format(questionId, questionAnswer)
+    user.passWordQA = str(questionId) + ";" + questionAnswer
+    db.session.merge(user)
+    db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
