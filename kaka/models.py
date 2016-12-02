@@ -24,6 +24,11 @@ class User(db.Model, UserMixin):
     create_time  = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     passWordQA   = db.Column(db.String(100))
     
+    nickName     = db.Column(db.String(50))
+    headImage    = db.Column(db.String(200))
+    logInType    = db.Column(db.Integer, default=0) #1为微信，2为qq，3 为微博，0 为账号密码
+    logInToken   = db.Column(db.String(50))         #微信，qq，微博登陆对应的token
+
     quanXians   = db.relationship('QuanXian', cascade="all")
     
     def __init__(self, **kargs):
@@ -38,6 +43,11 @@ class User(db.Model, UserMixin):
         self.registerType = int(kargs.get('RegisterType', 0))
         self.userMoney   = kargs.get('UserMoney', 0.0)
         self.passWordQA  = kargs.get('PassWordQA', '')
+
+        self.nickName   = kargs.get('NickName', '')
+        self.headImage  = kargs.get('HeadImage', '')
+        self.logInType  = kargs.get('LogInType', 0) 
+        self.logInToken = kargs.get('LogInToken', '')
 
     def verifyUser(self):
         if self.registerType == 0 and not self.phone:
@@ -190,7 +200,7 @@ class ShenQing(db.Model):
         return result
         
 class MachineUsage(db.Model):
-    __tablename__  = 'machine_usage'
+    __tablename__ = 'machine_usage'
     InfoUse, InfoStop = (0, 1)
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId     = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -208,4 +218,82 @@ class MachineUsage(db.Model):
         result = dict( (c.name, getattr(self, c.name)) for c in self.__table__.columns )
         if self.actiomTime:
             result['actiomTime'] = self.actiomTime.strftime("%Y-%m-%d %H:%M")
+        return result
+
+class Address(db.Model):
+    __tablename__ = 'address'
+    id       = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
+    country  = db.Column(db.String(20))
+    province = db.Column(db.String(20))
+    city     = db.Column(db.String(20))
+    district = db.Column(db.String(20))
+    street   = db.Column(db.String(50))
+
+    def __init__(self, *kargs):
+        self.country  = kargs.get('Country', "")
+        self.province = kargs.get('Province', "")
+        self.city     = kargs.get('City', "")
+        self.district = kargs.get('District', "")
+        self.street   = kargs.get('Street', "")
+
+    def toJson(self):
+        result = dict((c.name, getattr(self, c.name)) for c in self.__table__.columns)
+        return result
+
+class Share(db.Model):
+    __tablename__ = 'share'
+    PriceHour, PriceDay, PriceMonth, PriceYear = (1, 2, 3, 4)
+    Offline, Online = (0, 1)
+    id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
+    userId      = db.Column(db.Integer, db.ForeignKey('user.id'))
+    machineId   = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
+    place       = db.Column(db.Integer, db.ForeignKey('address.id'))
+    hotPointIds = db.Column(db.String(20))
+    price       = db.Column(db.Float) 
+    priceUnit   = db.Column(db.Integer)   #表示价格是每次、每小时、每天等
+    startTime   = db.Column(db.DateTime)
+    endTime     = db.Column(db.DateTime)
+    longitude	= db.Column(db.Float)
+    latitude    = db.Column(db.Float)
+    comments    = db.Column(db.String(200))
+    usageInstruction = db.Column(db.String(200))
+    shareCreateTime  = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    status      = db.Column(db.Integer, default=Online) #该分享“上线”或“下线”状态，有时候不想分享了，就下线。
+
+    def toJson(self):
+        result = dict( (c.name, getattr(self, c.name)) for c in self.__table__.columns )
+        if self.shareCreateTime:
+            result['shareCreateTime'] = self.shareCreateTime.strftime("%Y-%m-%d %H:%M")
+        return result
+
+class Comment(db.Model):
+    __tablename__ = 'comment'
+    id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
+    userId      = db.Column(db.Integer, db.ForeignKey('user.id'))
+    shareId     = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
+    content     = db.Column(db.String(200))
+    voteFlag    = db.Column(db.Integer, default=0)
+    commentTime = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    score       = db.Column(db.Integer, default=0)
+
+    def toJson(self):
+        result = dict((c.name, getattr(self, c.name))
+                          for c in self.__table__.columns)
+        if self.shareCreateTime:
+            result['commentTime'] = self.commentTime.strftime("%Y-%m-%d %H:%M")
+        return result
+
+class HotPoint(db.Model):
+    __tablename__ = 'hotpoint'
+    id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
+    name        = db.Column(db.String(20), nullable=False)
+    description = db.Column(db.String(200))
+    createBy    = db.Column(db.Integer, default=0) #创建热点的用户id：0表示系统实现定义好的，userId表示某个管理员添加的.
+
+    def __init__(self, **kagrs):
+        self.name = kargs.get('Name')
+        self.description = kagrs.get('Description', "")
+
+    def toJson(self):
+        result = dict((c.name, getattr(self, c.name)) for c in self.__table__.columns)
         return result
