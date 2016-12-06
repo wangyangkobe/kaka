@@ -169,12 +169,12 @@ def getQuestion():
 
 @user_blueprint.route('/getMyQuestion', methods=['POST'])
 @verify_request_json
-@use_args({"UserId"         : fields.Int(required=True),
-           "Token"          : fields.Str(required=True)},
+@use_args({"Phone": fields.Str(required=True)},
            locations=('json',))
-@verify_request_token
 def getMyQuestion(args):
-    user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId'))
+    user = User.getUserByIdOrPhoneOrMail(phone=args.get('Phone'))
+    if not user:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(args.get('Phone'))}), 400
     if user.passWordQA:
         questionId = int(user.passWordQA.split(";")[0])
         question = [x.get('question') for x in getPassWordQuestion() if x.get('id') == questionId][0]
