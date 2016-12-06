@@ -20,7 +20,7 @@ user_blueprint = Blueprint('user', __name__)
                                           "Permission"  : fields.Int(required=True),
                                           'StartTime'   : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                           'EndTime'     : fields.DateTime(format='%Y-%m-%d %H:%M'),
-                                          'Money'       : fields.Float(), 
+                                          'Money'       : fields.Float(),
                                           "Reason"      : fields.Str()}, required=True)
            },
           locations = ('json',))
@@ -28,7 +28,7 @@ user_blueprint = Blueprint('user', __name__)
 def applyPermission(args):
     userId = args.get('UserId', '')
     phone  = args.get('Phone', '')
-    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone) 
+    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
     applyDetail = args.get('ApplyDetail')
     macAddress = applyDetail.get('Mac', '')
     startTime  = applyDetail.get('StartTime', '') if applyDetail.get('StartTime', '') else None
@@ -37,17 +37,17 @@ def applyPermission(args):
     machine = Machine.query.filter_by(macAddress=macAddress).first()
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    
+
     needPermission = applyDetail.get('Permission')
     reason = applyDetail.get('Reason')
     shenQing = ShenQing(user.id, machine.id, reason=reason, needPermission=needPermission, startTime=startTime, endTime=endTime, money=money)
     db.session.add(shenQing)
     db.session.commit()
-    
+
     managerIds = [element.userId for element in QuanXian.query.filter_by(machineId=machine.id) if element.permission in [QuanXian.SuperAdmin, QuanXian.Admin]]
     tokenList = filter(lambda x : len(x) > 0, [User.query.get(id).pushToken for id in managerIds])
     logger.info("managerIds = {}\ntokens ={}".format(managerIds, tokenList))
-    
+
     pushContent = request.get_json()
     pushContent.pop('Token', None)
     pushContent['UserName'] = user.userName
@@ -55,7 +55,7 @@ def applyPermission(args):
     pushContent['Action'] = 'applyPermission'
     pushContent['ShenQingId'] = shenQing.id
     pushMessageToSingle(tokenList, TransmissionTemplateDemo( json.dumps(pushContent) ))
-    
+
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '申请成功!', 'ApplyDetail': shenQing.toJson()}), 200
 
 @user_blueprint.route('/infoUseMachine', methods=['POST'])
@@ -90,7 +90,7 @@ def infoStopUseMachine(args):
     machine    = Machine.getMachineByMac(args.get('Mac', ''))
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    
+
     machineUsage = MachineUsage(userId=userId, machineId=machine.id, action=MachineUsage.InfoStop)
     db.session.add(machineUsage)
     db.session.commit()
@@ -164,9 +164,23 @@ def getMyPermissionDetail(args):
 
 @user_blueprint.route('/getPassWordQuestion')
 def getQuestion():
-    questions =  getPassWordQuestion()
+    questions = getPassWordQuestion()
     return jsonify(questions)
 
+@user_blueprint.route('/getMyQuestion', methods=['POST'])
+@verify_request_json
+@use_args({"UserId"         : fields.Int(required=True),
+           "Token"          : fields.Str(required=True)},
+           locations=('json',))
+@verify_request_token
+def getMyQuestion(args):
+    user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId'))
+    if user.passWordQA:
+        questionId = int(user.passWordQA.split(";")[0])
+        question = [x.get('question') for x in getPassWordQuestion() if x.get('id') == questionId][0]
+        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MyQuestion': {'id': questionId, 'question': question}}), 200
+    else:
+        return jsonify({'Status': 'Failded', 'StatusCode': -1, 'Msg': '你没有设置密保问题!'}), 400
 
 @user_blueprint.route('/setPassWordAnswer', methods=['POST'])
 @verify_request_json
