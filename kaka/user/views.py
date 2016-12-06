@@ -201,24 +201,17 @@ def setPassWordAnswer(args):
 
 @user_blueprint.route('/updatePassword',  methods=['POST'])
 @verify_request_json
-@use_args({'UserId'         : fields.Int(),
-           "Phone"          : fields.Int(),
-           "Token"          : fields.Str(required=True),
+@use_args({"Phone"          : fields.Str(required=True),
            "QuestionId"     : fields.Int(required=True),
            "QuestionAnswer" : fields.Str(required=True),
            'NewPassWord'    : fields.Str(required=True)},
           locations = ('json',))
-@verify_request_token
 def updatePassword(args):
-    userId = args.get("UserId", '')
     phone  = args.get('Phone', '')
-    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
+    user = User.getUserByIdOrPhoneOrMail(phone=phone)
 
     if not user:
-        if phone:
-            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}), 400
-        if userId:
-            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}), 400
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}), 400
 
     questionId = args.get('QuestionId')
     questionAnswer = args.get('QuestionAnswer')
