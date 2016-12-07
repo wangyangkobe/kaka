@@ -6,7 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.schema import PrimaryKeyConstraint
 from webargs.core import ValidationError
 import uuid
-    
+
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
     mysql_character_set = 'utf8'
@@ -23,14 +23,14 @@ class User(db.Model, UserMixin):
     userMoney    = db.Column(db.Float)
     create_time  = db.Column(db.DateTime, nullable=False, default=datetime.datetime.utcnow)
     passWordQA   = db.Column(db.String(100))
-    
+
     nickName     = db.Column(db.String(50))
     headImage    = db.Column(db.String(200))
     logInType    = db.Column(db.Integer, default=0) #1为微信，2为qq，3 为微博，0 为账号密码
     logInToken   = db.Column(db.String(50))         #微信，qq，微博登陆对应的token
 
     quanXians   = db.relationship('QuanXian', cascade="all")
-    
+
     def __init__(self, **kargs):
         logger.info('User __init__: kargs = {}'.format(kargs))
         self.userName = kargs.get('UserName', "")
@@ -46,7 +46,7 @@ class User(db.Model, UserMixin):
 
         self.nickName   = kargs.get('NickName', '')
         self.headImage  = kargs.get('HeadImage', '')
-        self.logInType  = kargs.get('LogInType', 0) 
+        self.logInType  = kargs.get('LogInType', 0)
         self.logInToken = kargs.get('LogInToken', '')
 
     def verifyUser(self):
@@ -62,16 +62,16 @@ class User(db.Model, UserMixin):
             raise ValueError("The phone \"{}\" has been registered!".format(self.phone))
         else:
             raise ValueError("The email \"{}\" has been registered!".format(self.email))
-    
+
     def checkPassWord(self, password):
         return check_password_hash(self.passWord, password)
-    
+
     def get_auth_token(self):
-        return uuid.uuid4().hex 
-    
+        return uuid.uuid4().hex
+
     def updatePassWord(self, newPassWord):
         self.passWord = generate_password_hash(newPassWord)
-                
+
     @staticmethod
     def checkUserToken(userid, token):
         return User.query.filter_by(id=userid, token=token).count() > 0
@@ -87,26 +87,26 @@ class User(db.Model, UserMixin):
         elif id:
             return User.query.get(id)
         else:
-            return None        
+            return None
     def toJson(self):
         result = dict((c.name, getattr(self, c.name)) for c in self.__table__.columns)
         if self.create_time:
             result['create_time'] = self.create_time.strftime("%Y-%m-%d %H:%M")
-        return result 
-        
+        return result
+
 class Machine(db.Model):
     __tablename__ = 'machine'
     id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     macAddress  = db.Column(db.String(100), nullable=False, unique=True)
     machineName = db.Column(db.String(100), nullable=False) #机器出厂时的设备名
-    machineType = db.Column(db.Integer, nullable=False, default=0) #指定设备为“可匿名访问” 
+    machineType = db.Column(db.Integer, nullable=False, default=0) #指定设备为“可匿名访问”
     machineMoney= db.Column(db.Float)
     adminPass   = db.Column(db.String(100)) #管理员密码
     userPass    = db.Column(db.String(100)) #用户密码
-    
+
     #users = db.relationship("QuanXian", back_populates="user")
     quanXians   = db.relationship('QuanXian', cascade="all, delete-orphan")
-    
+
     def __init__(self, **kargs):
         self.macAddress   = kargs.get('Mac', "")
         self.machineName  = kargs.get('MachineName', "")
@@ -114,20 +114,20 @@ class Machine(db.Model):
         self.machineMoney = kargs.get('MachineMoney', 0.0)
         self.adminPass    = kargs.get('AdminPass', "")
         self.userPass     = kargs.get('UserPass', "")
-    
+
     @staticmethod
     def getMachineByMac(macAddress):
         return Machine.query.filter_by(macAddress=macAddress).first()
-    
+
     def toJson(self):
         return dict((c.name,
                      getattr(self, c.name))
                      for c in self.__table__.columns)
-        
+
 class QuanXian(db.Model):
     __tablename__  = 'user_machine'
     # 0是厂家，1是超级管理员，2是管理员，3是普通用户，4是访客，5是无权，6是匿名
-    Producer, SuperAdmin, Admin, User, Vistor, NoRight, Anonymous = (0, 1, 2, 3, 4, 5, 6) 
+    Producer, SuperAdmin, Admin, User, Vistor, NoRight, Anonymous = (0, 1, 2, 3, 4, 5, 6)
     #__table_args__ = (PrimaryKeyConstraint('userId', 'machineId'),)
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
@@ -138,9 +138,9 @@ class QuanXian(db.Model):
     endTime    = db.Column(db.DateTime)
     money      = db.Column(db.Float, default=0.0)
     machineName= db.Column(db.String(200)) #用户对机器的命名
-    
-    def __init__(self, userId, machineId, permission=User, 
-                reason=None, startTime=None, endTime=None, 
+
+    def __init__(self, userId, machineId, permission=User,
+                reason=None, startTime=None, endTime=None,
                 money = 0, machineName=0):
         self.userId = userId
         self.machineId = machineId
@@ -152,7 +152,7 @@ class QuanXian(db.Model):
             self.endTime = endTime
         self.money = money
         self.machineName = machineName
-        
+
     def toJson(self):
         result =  dict((c.name,
                         getattr(self, c.name))
@@ -162,7 +162,7 @@ class QuanXian(db.Model):
         if self.endTime:
             result['endTime']   = self.endTime.strftime("%Y-%m-%d %H:%M")
         return result
-    
+
 class ShenQing(db.Model):
     __tablename__  = 'shen_qing'
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
@@ -175,9 +175,9 @@ class ShenQing(db.Model):
     startTime  = db.Column(db.DateTime) # 开始使用该机器的时间
     endTime    = db.Column(db.DateTime) # 结束使用该机器的时间
     money      = db.Column(db.Float, default=0.0)
-    
+
     def __init__(self, userId, machineId, statusCode=0, needPermission=-1,
-                reason='', startTime=None, endTime=None, money=0.0, 
+                reason='', startTime=None, endTime=None, money=0.0,
                 time=datetime.datetime.utcnow()):
         self.userId = userId
         self.machineId = machineId
@@ -188,7 +188,7 @@ class ShenQing(db.Model):
         self.startTime = startTime
         self.endTime   = endTime
         self.money = money
-    
+
     def toJson(self):
         result =  dict((c.name,
                         getattr(self, c.name))
@@ -198,7 +198,7 @@ class ShenQing(db.Model):
         if self.endTime:
             result['endTime']   = self.endTime.strftime("%Y-%m-%d %H:%M")
         return result
-        
+
 class MachineUsage(db.Model):
     __tablename__ = 'machine_usage'
     InfoUse, InfoStop = (0, 1)
@@ -207,13 +207,13 @@ class MachineUsage(db.Model):
     machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
     action     = db.Column(db.String(20), nullable=True)  #0代表开始使用，1代表停止使用
     actiomTime = db.Column(db.DateTime)
-    
+
     def __init__(self, userId, machineId, action=None, actionTime=datetime.datetime.utcnow()):
         self.userId = userId
         self.machineId = machineId
         self.action = action
         self.actiomTime = actionTime
-        
+
     def toJson(self):
         result = dict( (c.name, getattr(self, c.name)) for c in self.__table__.columns )
         if self.actiomTime:
@@ -229,12 +229,25 @@ class Address(db.Model):
     district = db.Column(db.String(20))
     street   = db.Column(db.String(50))
 
-    def __init__(self, *kargs):
+    def __init__(self, **kargs):
         self.country  = kargs.get('Country', "")
         self.province = kargs.get('Province', "")
         self.city     = kargs.get('City', "")
         self.district = kargs.get('District', "")
         self.street   = kargs.get('Street', "")
+
+    @staticmethod
+    def getAddressId(place):
+        (country, province, city, district, street) = place.split(',')
+        address = Address.query.filter_by(country=country, province=province, city=city, district=district, street=street).first()
+        if address:
+            return address.id
+        else:
+            address = Address(Country=country, Province=province, City=city, District=district, Street=street)
+            db.session.add(address)
+            db.session.commit()
+            db.session.flush()
+            return address.id
 
     def toJson(self):
         result = dict((c.name, getattr(self, c.name)) for c in self.__table__.columns)
@@ -247,9 +260,9 @@ class Share(db.Model):
     id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId      = db.Column(db.Integer, db.ForeignKey('user.id'))
     machineId   = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
-    place       = db.Column(db.Integer, db.ForeignKey('address.id'))
+    addressId   = db.Column(db.Integer, db.ForeignKey('address.id'))
     hotPointIds = db.Column(db.String(20))
-    price       = db.Column(db.Float) 
+    price       = db.Column(db.Float)
     priceUnit   = db.Column(db.Integer)   #表示价格是每次、每小时、每天等
     startTime   = db.Column(db.DateTime)
     endTime     = db.Column(db.DateTime)
@@ -259,6 +272,21 @@ class Share(db.Model):
     usageInstruction = db.Column(db.String(200))
     shareCreateTime  = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     status      = db.Column(db.Integer, default=Online) #该分享“上线”或“下线”状态，有时候不想分享了，就下线。
+
+    def __init__(self, **kargs):
+        self.userId      = kargs.get("UserId")
+        self.machineId   = kargs.get('MachineId')
+        self.addressId   = kargs.get('AddressId', 0)
+        self.hotPointIds = kargs.get('HotPointIds', "")
+        self.price       = kargs.get('Price', 0)
+        self.priceUnit   = kargs.get('PriceUnit', 0.0)
+        self.startTime   = kargs.get('StartTime', '')
+        self.endTime     = kargs.get('EndTime', '')
+        self.longitude   = kargs.get('Longitude', 0.0)
+        self.latitude    = kargs.get('Latitude', 0.0)
+        self.comments    = kargs.get('Comments', '')
+        self.usageInstruction = kargs.get('UsageInstruction', "")
+        self.status      = kargs.get('Status', Online)
 
     def toJson(self):
         result = dict( (c.name, getattr(self, c.name)) for c in self.__table__.columns )
@@ -275,7 +303,15 @@ class Comment(db.Model):
     voteFlag    = db.Column(db.Integer, default=0)
     commentTime = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     score       = db.Column(db.Integer, default=0)
+    imageUrl    = db.Column(db.String(100))
 
+    def __init__(self, **kargs):
+        self.userId   = kargs.get('UserId')
+        self.shareId  = kargs.get("ShareId")
+        self.content  = kargs.get('Content')
+        self.voteFlag = kargs.get('VoteFlag', 0)
+        self.score    = kargs.get('Score', 0)
+        self.imageUrl = kargs.get('ImageUrl')
     def toJson(self):
         result = dict((c.name, getattr(self, c.name))
                           for c in self.__table__.columns)
@@ -291,8 +327,9 @@ class HotPoint(db.Model):
     createBy    = db.Column(db.Integer, default=0) #创建热点的用户id：0表示系统实现定义好的，userId表示某个管理员添加的.
 
     def __init__(self, **kagrs):
-        self.name = kargs.get('Name')
+        self.name        = kargs.get('Name')
         self.description = kagrs.get('Description', "")
+        self.createBy    = kargs.get('CreateBy', 0)
 
     def toJson(self):
         result = dict((c.name, getattr(self, c.name)) for c in self.__table__.columns)
