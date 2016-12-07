@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, jsonify, request
-from kaka.models import User, ShenQing, Machine, MachineUsage, QuanXian
+from kaka.models import User, ShenQing, Machine, MachineUsage, QuanXian, Share, Address, Comment, HotPoint
 from kaka import db, logger
-from kaka.decorators import verify_request_json, verify_request_token
+from kaka.decorators import verify_request_json, verify_request_token, verify_user_exist
 from webargs import fields
 from webargs.flaskparser import use_args
 import json
@@ -20,7 +20,7 @@ user_blueprint = Blueprint('user', __name__)
                                           "Permission"  : fields.Int(required=True),
                                           'StartTime'   : fields.DateTime(format='%Y-%m-%d %H:%M'),
                                           'EndTime'     : fields.DateTime(format='%Y-%m-%d %H:%M'),
-                                          'Money'       : fields.Float(), 
+                                          'Money'       : fields.Float(),
                                           "Reason"      : fields.Str()}, required=True)
            },
           locations = ('json',))
@@ -28,7 +28,7 @@ user_blueprint = Blueprint('user', __name__)
 def applyPermission(args):
     userId = args.get('UserId', '')
     phone  = args.get('Phone', '')
-    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone) 
+    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
     applyDetail = args.get('ApplyDetail')
     macAddress = applyDetail.get('Mac', '')
     startTime  = applyDetail.get('StartTime', '') if applyDetail.get('StartTime', '') else None
@@ -37,17 +37,17 @@ def applyPermission(args):
     machine = Machine.query.filter_by(macAddress=macAddress).first()
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    
+
     needPermission = applyDetail.get('Permission')
     reason = applyDetail.get('Reason')
     shenQing = ShenQing(user.id, machine.id, reason=reason, needPermission=needPermission, startTime=startTime, endTime=endTime, money=money)
     db.session.add(shenQing)
     db.session.commit()
-    
+
     managerIds = [element.userId for element in QuanXian.query.filter_by(machineId=machine.id) if element.permission in [QuanXian.SuperAdmin, QuanXian.Admin]]
     tokenList = filter(lambda x : len(x) > 0, [User.query.get(id).pushToken for id in managerIds])
     logger.info("managerIds = {}\ntokens ={}".format(managerIds, tokenList))
-    
+
     pushContent = request.get_json()
     pushContent.pop('Token', None)
     pushContent['UserName'] = user.userName
@@ -55,7 +55,7 @@ def applyPermission(args):
     pushContent['Action'] = 'applyPermission'
     pushContent['ShenQingId'] = shenQing.id
     pushMessageToSingle(tokenList, TransmissionTemplateDemo( json.dumps(pushContent) ))
-    
+
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '申请成功!', 'ApplyDetail': shenQing.toJson()}), 200
 
 @user_blueprint.route('/infoUseMachine', methods=['POST'])
@@ -90,7 +90,7 @@ def infoStopUseMachine(args):
     machine    = Machine.getMachineByMac(args.get('Mac', ''))
     if not machine:
         return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "MacAddress {} does't exist".format(macAddress)}), 400
-    
+
     machineUsage = MachineUsage(userId=userId, machineId=machine.id, action=MachineUsage.InfoStop)
     db.session.add(machineUsage)
     db.session.commit()
@@ -195,16 +195,11 @@ def setPassWordAnswer(args):
            'NewPassWord'    : fields.Str(required=True)},
           locations = ('json',))
 @verify_request_token
+@verify_user_exist
 def updatePassword(args):
     userId = args.get("UserId", '')
     phone  = args.get('Phone', '')
     user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
-
-    if not user:
-        if phone:
-            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}), 400
-        if userId:
-            return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}), 400
 
     questionId = args.get('QuestionId')
     questionAnswer = args.get('QuestionAnswer')
@@ -221,3 +216,104 @@ def updatePassword(args):
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '你没有设置密码保护,无法重置密码!'}), 400
     else:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "操作失败,输入的答案有误!"}), 400
+
+
+@user_blueprint.route('/createShare',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId'           : fields.Int(),
+           'Phone'            : fields.Str(),
+           'Token'            : fields.Str(required=True),
+           'MachineId'        : fields.Int(required=True),
+           'Place'            : fields.Str(),
+           'Price'            : fields.Float(),
+           'PriceUint'        : fields.Int(),
+           'ImageUrls'        : fields.Str(),
+           'StartTime'        : fields.DateTime(format='%Y-%m-%d %H:%M'),
+           'EndTime'          : fields.DateTime(format='%Y-%m-%d %H:%M'),
+           'Longitude'        : fields.Float(),
+           'Latitude'         : fields.Float(),
+           'Comments'         : fields.Str(),
+           'UsageInstruction' : fields.Str(),
+           'Status'           : fields.Int(default=Share.Online)},
+           locations = ('json',))
+@verify_request_token
+@verify_user_exist
+def createShare(args):
+    machineId = args.get('MachineId', 0)
+    machine = Machine.get(machineId)
+    if not machine:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "分享失败，分享的机器{}不存在!".format(machineId)}), 400
+
+    addressId = Address.getAddressId(place)
+    user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId', ''), phone=args.get('Phone', ''))
+    shareDict = dict(args).update({'AddressId': addressId, 'UserId': user.id})
+    shareObj = Share(**shareDict)
+
+    db.session.add(shareObj)
+    db.session.comnmit()
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'Share': shareObj.toJson()}), 200
+
+@user_blueprint.route('/getShareDetailById',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId' : fields.Int(),
+           'Phone'  : fields.Str(),
+           'Token'  : fields.Str(required=True),
+           'ShareId': fields.Int(required=True)},
+          locations = ('json',))
+@verify_request_token
+@verify_user_exist
+def getShareDetailById(args):
+    shareId = args.get('ShareId')
+    share = Share.query.get(shareId)
+    if not share:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "该分享{}不存在!".format(shareId)}), 400
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'Share': share.toJson()}), 200
+
+@user_blueprint.route('/deleteShareDetailById',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId' : fields.Int(),
+           'Phone'  : fields.Str(),
+           'Token'  : fields.Str(required=True),
+           'ShareId': fields.Int(required=True)},
+           locations = ('json',))
+@verify_request_token
+@verify_user_exist
+def deleteShareDetailById(args)
+    shareId = args.get('ShareId')
+    share = Share.query.get(shareId)
+    if not share:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "该分享{}不存在!".format(shareId)}), 400
+    db.session.delete(share)
+    db.session.commit()
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!"}), 200
+
+@user_blueprint.route('/createComment',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId' : fields.Int(),
+           'Phone'  : fields.Str(),
+           'Token'  : fields.Str(required=True),
+           'ShareId': fields.Int(required=True),
+           'CommentInfo': fields.Nest({
+               'Content' : fields.Str(),
+               'VoteFlag': fields.Int(default=0), #1为点赞，-1为吐槽，0为默认值
+               'Score'   : fields.Int(default=0),
+               'ImageUrl': fields.Str()
+           },required=True)},
+          locations = ('json',))
+@verify_request_token
+@verify_user_exist
+def createComment(args):
+    content  = args.get('CommentInfo').get('Content', "")
+    voteFlag = args.get('CommentInfo').get('VoteFlag')
+    score    = args.get("CommentInfo").get('Score')
+    imageUrl = args.get("CommentInfo").get('ImageUrl')
+
+    user     = User.getUserByIdOrPhoneOrMail(id=args.get('UserId', ''), phone=args.get('Phone', ''))
+    share    = Share.query.get(shareId)
+    if not share:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "该分享{}不存在!".format(shareId)}), 400
+    commentDict = {'UserId': user.id, 'ShareId': share.id, 'Content': content, 'VoteFlag': voteFlag, 'Score': Score, 'ImageUrl': imageUrl}
+    comment = Comment(**commentDict)
+    db.session.add(comment)
+    db.session.commit()
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'Comemnt': comment.toJson()}), 200

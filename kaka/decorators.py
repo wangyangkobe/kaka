@@ -47,3 +47,19 @@ def verify_request_token1(func):
         else:
             return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': 'token错误!'}), 400 
     return wrapped
+
+def verify_user_exist(func):
+    @wraps(func)
+    def wrapped(*args, **kargs):
+        userId = request.json.get("UserId", '')
+        phone  = request.json.get('Phone', '')
+        user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
+
+        if not user:
+            if phone:
+                return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(phone)}), 400
+            if userId:
+                return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User id={} does't exist".format(userId)}), 400
+        else:
+            return func(*args, **kwargs)
+    return wrapped
