@@ -45,7 +45,7 @@ def verify_request_token1(func):
         elif not token:
             return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '请求的paylod中无Token'}), 400
         else:
-            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': 'token错误!'}), 400 
+            return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': 'token错误!'}), 400
     return wrapped
 
 def verify_user_exist(func):

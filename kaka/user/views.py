@@ -164,9 +164,23 @@ def getMyPermissionDetail(args):
 
 @user_blueprint.route('/getPassWordQuestion')
 def getQuestion():
-    questions =  getPassWordQuestion()
+    questions = getPassWordQuestion()
     return jsonify(questions)
 
+@user_blueprint.route('/getMyQuestion', methods=['POST'])
+@verify_request_json
+@use_args({"Phone": fields.Str(required=True)},
+           locations=('json',))
+def getMyQuestion(args):
+    user = User.getUserByIdOrPhoneOrMail(phone=args.get('Phone'))
+    if not user:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "User phone={} does't exist".format(args.get('Phone'))}), 400
+    if user.passWordQA:
+        questionId = int(user.passWordQA.split(";")[0])
+        question = [x.get('question') for x in getPassWordQuestion() if x.get('id') == questionId][0]
+        return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!', 'MyQuestion': {'id': questionId, 'question': question}}), 200
+    else:
+        return jsonify({'Status': 'Failded', 'StatusCode': -1, 'Msg': '你没有设置密保问题!'}), 400
 
 @user_blueprint.route('/setPassWordAnswer', methods=['POST'])
 @verify_request_json
@@ -187,19 +201,14 @@ def setPassWordAnswer(args):
 
 @user_blueprint.route('/updatePassword',  methods=['POST'])
 @verify_request_json
-@use_args({'UserId'         : fields.Int(),
-           "Phone"          : fields.Int(),
-           "Token"          : fields.Str(required=True),
+@use_args({"Phone"          : fields.Str(required=True),
            "QuestionId"     : fields.Int(required=True),
            "QuestionAnswer" : fields.Str(required=True),
            'NewPassWord'    : fields.Str(required=True)},
           locations = ('json',))
-@verify_request_token
-@verify_user_exist
 def updatePassword(args):
-    userId = args.get("UserId", '')
     phone  = args.get('Phone', '')
-    user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
+    user = User.getUserByIdOrPhoneOrMail(phone=phone)
 
     questionId = args.get('QuestionId')
     questionAnswer = args.get('QuestionAnswer')
