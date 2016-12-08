@@ -278,7 +278,7 @@ def getShareDetailById(args):
            locations = ('json',))
 @verify_request_token
 @verify_user_exist
-def deleteShareDetailById(args)
+def deleteShareDetailById(args):
     shareId = args.get('ShareId')
     share = Share.query.get(shareId)
     if not share:
@@ -293,7 +293,7 @@ def deleteShareDetailById(args)
            'Phone'  : fields.Str(),
            'Token'  : fields.Str(required=True),
            'ShareId': fields.Int(required=True),
-           'CommentInfo': fields.Nest({
+           'CommentInfo': fields.Nested({
                'Content' : fields.Str(),
                'VoteFlag': fields.Int(default=0), #1为点赞，-1为吐槽，0为默认值
                'Score'   : fields.Int(default=0),
