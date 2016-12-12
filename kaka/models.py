@@ -259,8 +259,10 @@ class Share(db.Model):
     Offline, Online = (0, 1)
     id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId      = db.Column(db.Integer, db.ForeignKey('user.id'))
-    machineId   = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
-    addressId   = db.Column(db.Integer, db.ForeignKey('address.id'))
+    #machineId   = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
+    title       = db.Column(db.String(100))
+    address     = db.Column(db.String(200))
+    imageUrls   = db.Column(db.String(300))
     hotPointIds = db.Column(db.String(20))
     price       = db.Column(db.Float)
     priceUnit   = db.Column(db.Integer)   #表示价格是每次、每小时、每天等
@@ -275,23 +277,28 @@ class Share(db.Model):
 
     def __init__(self, **kargs):
         self.userId      = kargs.get("UserId")
-        self.machineId   = kargs.get('MachineId')
-        self.addressId   = kargs.get('AddressId', 0)
+        self.title       = kargs.get('Title', "")
+        self.address     = kargs.get('Address', '').encode('utf-8')
         self.hotPointIds = kargs.get('HotPointIds', "")
         self.price       = kargs.get('Price', 0)
-        self.priceUnit   = kargs.get('PriceUnit', 0.0)
-        self.startTime   = kargs.get('StartTime', '')
-        self.endTime     = kargs.get('EndTime', '')
+        self.priceUnit   = kargs.get('PriceUnit', 0)
+        self.startTime   = kargs.get('StartTime', None)
+        self.endTime     = kargs.get('EndTime', None)
         self.longitude   = kargs.get('Longitude', 0.0)
         self.latitude    = kargs.get('Latitude', 0.0)
         self.comments    = kargs.get('Comments', '')
         self.usageInstruction = kargs.get('UsageInstruction', "")
-        self.status      = kargs.get('Status', Online)
+        self.status      = kargs.get('Status', Share.Online)
+        self.imageUrls   = kargs.get('ImageUrls', "")
 
     def toJson(self):
         result = dict( (c.name, getattr(self, c.name)) for c in self.__table__.columns )
         if self.shareCreateTime:
             result['shareCreateTime'] = self.shareCreateTime.strftime("%Y-%m-%d %H:%M")
+        if self.startTime:
+            result['startTime'] = self.startTime.strftime("%Y-%m-%d %H:%M")
+        if self.endTime:
+            result['endTime'] = self.endTime.strftime("%Y-%m-%d %H:%M")    
         return result
 
 class Comment(db.Model):
@@ -322,14 +329,27 @@ class Comment(db.Model):
 class HotPoint(db.Model):
     __tablename__ = 'hotpoint'
     id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
-    name        = db.Column(db.String(20), nullable=False)
+    name        = db.Column(db.String(20), nullable=False, unique=True)
     description = db.Column(db.String(200))
     createBy    = db.Column(db.Integer, default=0) #创建热点的用户id：0表示系统实现定义好的，userId表示某个管理员添加的.
 
-    def __init__(self, **kagrs):
-        self.name        = kargs.get('Name')
-        self.description = kagrs.get('Description', "")
-        self.createBy    = kargs.get('CreateBy', 0)
+    def __init__(self, name, description="", createBy=0):
+        self.name = name
+        self.description = description
+        self.createBy = createBy
+
+    @staticmethod
+    def checkExist(hotPointTag):
+        result = HotPoint.query.filter_by(name=hotPointTag).first()
+        if result:
+            return result
+        else:
+            hotPoint = HotPoint(name = hotPointTag)
+            db.session.add(hotPoint)
+            db.session.commit()
+            db.session.flush()
+        return hotPoint
+
 
     def toJson(self):
         result = dict((c.name, getattr(self, c.name)) for c in self.__table__.columns)

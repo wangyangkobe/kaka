@@ -50,10 +50,10 @@ def verify_request_token1(func):
 
 def verify_user_exist(func):
     @wraps(func)
-    def wrapped(*args, **kargs):
+    def wrapped(*args, **kwargs):
         userId = request.json.get("UserId", '')
         phone  = request.json.get('Phone', '')
-        user = User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
+        user   = models.User.getUserByIdOrPhoneOrMail(id=userId, phone=phone)
 
         if not user:
             if phone:

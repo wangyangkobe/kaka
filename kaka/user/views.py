@@ -5,8 +5,8 @@ from kaka import db, logger
 from kaka.decorators import verify_request_json, verify_request_token, verify_user_exist
 from webargs import fields
 from webargs.flaskparser import use_args
-import json
-from kaka.lib import formatTime, getPassWordQuestion
+import json, pprint
+from kaka.lib import formatTime, getPassWordQuestion, addressGeoCoding
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
 
 user_blueprint = Blueprint('user', __name__)
@@ -226,21 +226,23 @@ def updatePassword(args):
     else:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "操作失败,输入的答案有误!"}), 400
 
+@user_blueprint.route('/getAllHotPoints',  methods=['GET'])
+def getAllHotPoints():
+    return jsonify([hotPoint.toJson() for hotPoint in HotPoint.query.all()])
 
 @user_blueprint.route('/createShare',  methods=['POST'])
 @verify_request_json
 @use_args({'UserId'           : fields.Int(),
            'Phone'            : fields.Str(),
            'Token'            : fields.Str(required=True),
-           'MachineId'        : fields.Int(required=True),
-           'Place'            : fields.Str(),
+           'Title'            : fields.Str(required=True),
+           'HotPointTag'      : fields.Str(required=True),
+           'Address'          : fields.Str(),
            'Price'            : fields.Float(),
-           'PriceUint'        : fields.Int(),
-           'ImageUrls'        : fields.Str(),
+           'PriceUnit'        : fields.Int(validate=lambda p: p in [1, 2, 3, 4]),
+           'ImageUrls'        : fields.DelimitedList(fields.Str()),
            'StartTime'        : fields.DateTime(format='%Y-%m-%d %H:%M'),
            'EndTime'          : fields.DateTime(format='%Y-%m-%d %H:%M'),
-           'Longitude'        : fields.Float(),
-           'Latitude'         : fields.Float(),
            'Comments'         : fields.Str(),
            'UsageInstruction' : fields.Str(),
            'Status'           : fields.Int(default=Share.Online)},
@@ -248,18 +250,25 @@ def updatePassword(args):
 @verify_request_token
 @verify_user_exist
 def createShare(args):
-    machineId = args.get('MachineId', 0)
-    machine = Machine.get(machineId)
-    if not machine:
-        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "分享失败，分享的机器{}不存在!".format(machineId)}), 400
+    try:
+        (longitude, latitude) = addressGeoCoding(args.get('Address'))
+    except ValueError, error:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': error.message}), 400
 
-    addressId = Address.getAddressId(place)
+    hotPoint = HotPoint.checkExist(args.get('HotPointTag'))
+
     user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId', ''), phone=args.get('Phone', ''))
-    shareDict = dict(args).update({'AddressId': addressId, 'UserId': user.id})
+    shareDict = dict(args)
+    shareDict.update({'UserId'     : user.id,
+                      'HotPointIds': hotPoint.id,
+                      'Longitude'  : longitude,
+                      'ImageUrls'  : ','.join(args.get('ImageUrls')),
+                      'Latitude'   : latitude})
+    shareDict['Address'] = args.get('Address')
+    logger.info("createShare, shareObj = \n" + pprint.pformat(shareDict))
     shareObj = Share(**shareDict)
-
     db.session.add(shareObj)
-    db.session.comnmit()
+    db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'Share': shareObj.toJson()}), 200
 
 @user_blueprint.route('/getShareDetailById',  methods=['POST'])
@@ -268,7 +277,7 @@ def createShare(args):
            'Phone'  : fields.Str(),
            'Token'  : fields.Str(required=True),
            'ShareId': fields.Int(required=True)},
-          locations = ('json',))
+           locations = ('json',))
 @verify_request_token
 @verify_user_exist
 def getShareDetailById(args):
@@ -277,6 +286,24 @@ def getShareDetailById(args):
     if not share:
         return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "该分享{}不存在!".format(shareId)}), 400
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'Share': share.toJson()}), 200
+
+@user_blueprint.route('/getAllShares',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId' : fields.Int(),
+           'Phone'  : fields.Str(),
+           'Token'  : fields.Str(required=True),
+           'Page'   : fields.Int(required=True),
+           'PerPage': fields.Int(required=True, missing=20)},
+           locations = ('json',))
+@verify_request_token
+@verify_user_exist
+def getAllShares(args):
+    page = args.get('Page')
+    perPage = args.get('PerPage')
+    shares = Share.query.paginate(page, perPage, False).items
+    res = [share.toJson() for share in shares]
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'Shares': res}), 200
+    
 
 @user_blueprint.route('/deleteShareDetailById',  methods=['POST'])
 @verify_request_json

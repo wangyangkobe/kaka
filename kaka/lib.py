@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 from kaka import APPKEY, MASTERSECRET, APPID, Alias, HOST, logger
 
-
-
 from igetui import *
 from igt_push import *
 from igetui.template import *
@@ -17,6 +15,7 @@ from igetui.igt_target import *
 from igetui.template import *
 from payload.APNPayload import SimpleAlertMsg
 import os
+from geopy.geocoders import Baidu
 
 push = IGeTui(HOST, APPKEY, MASTERSECRET)
 
@@ -109,3 +108,12 @@ def getPassWordQuestion():
     for index, value in enumerate(questions, start=1):
         res.append({'id': index, 'question': value})
     return res
+
+def addressGeoCoding(address):
+    if not address:
+        raise ValueError("address不能为空!")
+    try:
+        location = Baidu('sXN2OGE9BeXBtg86alaspxFFcEWEp5B1').geocode(address)
+        return (location.longitude, location.latitude)
+    except Exception, e:
+        raise ValueError("地址{}解析失败,error={}!".format(address, e.message))
