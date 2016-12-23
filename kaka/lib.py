@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 from kaka import APPKEY, MASTERSECRET, APPID, Alias, HOST, logger
 
 from igetui import *
@@ -110,10 +114,13 @@ def getPassWordQuestion():
     return res
 
 def addressGeoCoding(address):
+    print address
     if not address:
         raise ValueError("address不能为空!")
     try:
         location = Baidu('sXN2OGE9BeXBtg86alaspxFFcEWEp5B1').geocode(address)
+        logger.info("addressGeoCoding, location = {}".format(location))
         return (location.longitude, location.latitude)
-    except Exception, e:
-        raise ValueError("地址{}解析失败,error={}!".format(address, e.message))
+    except Exception as e:
+        print e
+        raise ValueError("地址 %s 解析失败,error=%s!" % (address, e.message))

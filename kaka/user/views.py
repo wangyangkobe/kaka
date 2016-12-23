@@ -240,7 +240,7 @@ def getAllHotPoints():
            'Address'          : fields.Str(),
            'Price'            : fields.Float(),
            'PriceUnit'        : fields.Int(validate=lambda p: p in [1, 2, 3, 4]),
-           'ImageUrls'        : fields.DelimitedList(fields.Str()),
+           'ImageUrls'        : fields.List(fields.Str()),
            'StartTime'        : fields.DateTime(format='%Y-%m-%d %H:%M'),
            'EndTime'          : fields.DateTime(format='%Y-%m-%d %H:%M'),
            'Comments'         : fields.Str(),
@@ -250,14 +250,16 @@ def getAllHotPoints():
 @verify_request_token
 @verify_user_exist
 def createShare(args):
+    user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId', ''), phone=args.get('Phone', ''))
+    if Share.query.filter_by(userId=user.id, title=args.get('Title'), address=args.get('Address')).count() > 0:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '你已经发布过相同的分享了!'}), 400
     try:
         (longitude, latitude) = addressGeoCoding(args.get('Address'))
-    except ValueError, error:
-        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': error.message}), 400
+    except Exception as error:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': str(error)}), 400
 
     hotPoint = HotPoint.checkExist(args.get('HotPointTag'))
 
-    user = User.getUserByIdOrPhoneOrMail(id=args.get('UserId', ''), phone=args.get('Phone', ''))
     shareDict = dict(args)
     shareDict.update({'UserId'     : user.id,
                       'HotPointIds': hotPoint.id,

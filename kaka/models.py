@@ -298,7 +298,8 @@ class Share(db.Model):
         if self.startTime:
             result['startTime'] = self.startTime.strftime("%Y-%m-%d %H:%M")
         if self.endTime:
-            result['endTime'] = self.endTime.strftime("%Y-%m-%d %H:%M")    
+            result['endTime'] = self.endTime.strftime("%Y-%m-%d %H:%M")  
+        result['imageUrls'] = self.imageUrls.split(',')  
         return result
 
 class Comment(db.Model):
