@@ -8,6 +8,7 @@ from webargs.flaskparser import use_args
 import json, pprint
 from kaka.lib import formatTime, getPassWordQuestion, addressGeoCoding
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
+from sqlalchemy import text
 
 user_blueprint = Blueprint('user', __name__)
 
@@ -306,7 +307,6 @@ def getAllShares(args):
     res = [share.toJson() for share in shares]
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'Shares': res}), 200
     
-
 @user_blueprint.route('/deleteShareDetailById',  methods=['POST'])
 @verify_request_json
 @use_args({'UserId' : fields.Int(),
@@ -324,6 +324,37 @@ def deleteShareDetailById(args):
     db.session.delete(share)
     db.session.commit()
     return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!"}), 200
+
+@user_blueprint.route('/searchShare',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId'     : fields.Int(),
+           'Phone'      : fields.Str(),
+           'Token'      : fields.Str(required=True),
+           'Address'    : fields.Str(required=True),
+           'HotPointTag': fields.Str(required=True)
+           },
+          locations = ('json',))
+@verify_request_token
+@verify_user_exist
+def searchShare(args):
+    hotPoint = HotPoint.query.filter_by(name=args.get('HotPointTag')).first()
+    if not hotPoint:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': "输入的HotPointTag={}无效!".format(args.get('HotPointTag'))}), 400
+    try:
+        (longitude, latitude) = addressGeoCoding(args.get('Address'))
+    except Exception as error:
+        return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': str(error)}), 400
+    
+    sql = text('SELECT *, (POWER(MOD(ABS(longitude - {}),360),2) + POWER(ABS(latitude - {}),2)) AS distance FROM `share` where hotPointIds={} ORDER BY distance LIMIT 100'.format(longitude, latitude, hotPoint.id))
+    result = []
+    for row in db.engine.execute(sql.execution_options(autocommit=True)):
+        logger.info(row)
+        share = Share.query.get(row['id']).toJson()
+        share['Distance'] = row['distance']
+        result.append(share)
+    
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': "操作成功!", 'Shares': result}), 200
+    
 
 @user_blueprint.route('/createComment',  methods=['POST'])
 @verify_request_json

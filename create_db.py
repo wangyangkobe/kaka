@@ -13,5 +13,5 @@ if __name__ == '__main__':
     db.engine.execute(text('ALTER table address CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci'))
     db.engine.execute(text('ALTER table share CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci'))
     db.engine.execute(text('ALTER table comment CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci'))
-    db.engine.execute(text('ALTER table hotpoint CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci'))
+    db.engine.execute(text('ALTER table `order` CONVERT TO CHARACTER SET utf8 COLLATE utf8_general_ci'))
     print('create table finish!')

@@ -5,7 +5,7 @@ from flask_login import UserMixin, make_secure_token
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.schema import PrimaryKeyConstraint
 from webargs.core import ValidationError
-import uuid
+import shortuuid, datetime, uuid
 
 class User(db.Model, UserMixin):
     __tablename__ = 'user'
@@ -166,7 +166,7 @@ class QuanXian(db.Model):
 class ShenQing(db.Model):
     __tablename__  = 'shen_qing'
     id         = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
-    userId     = db.Column(db.Integer,  db.ForeignKey('user.id'))
+    userId     = db.Column(db.Integer, db.ForeignKey('user.id'))
     machineId  = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
     statusCode = db.Column(db.Integer, default=0)  #0代表管理员未查看该权限申请请求，-1表示拒绝该申请，1表示通过该申请
     needPermission = db.Column(db.Integer, default=0)
@@ -222,7 +222,7 @@ class MachineUsage(db.Model):
 
 class Address(db.Model):
     __tablename__ = 'address'
-    id       = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
+    id       = db.Column(db.BigInteger, autoincrement=True, nullable=False, primary_key=True)
     country  = db.Column(db.String(20))
     province = db.Column(db.String(20))
     city     = db.Column(db.String(20))
@@ -302,11 +302,36 @@ class Share(db.Model):
         result['imageUrls'] = self.imageUrls.split(',')  
         return result
 
+class Order(db.Model):
+    __tablename__ = 'order'
+    Init, WaitingPay, TradeDone, TradeClosed = (0, 1, 2, 3)
+    orderId    = db.Column(db.String(30), nullable=False, primary_key=True)
+    userId     = db.Column(db.Integer, db.ForeignKey('user.id'))
+    shareId    = db.Column(db.Integer, db.ForeignKey('share.id', ondelete="CASCADE"))
+    money      = db.Column(db.Float)
+    status     = db.Column(db.Integer, default=Init)
+    createTime = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    def __init__(self, userId, shareId, money, status=Init, createTime=datetime.datetime.utcnow()):
+        self.orderId = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S") + shortuuid.ShortUUID(alphabet="0123456789").random(length=10))
+        self.userId  = userId
+        self.shareId = shareId
+        self.money   = money
+        self.status  = status
+        self.createTime = createTime
+
+    def toJson(self):
+        result = dict((c.name, getattr(self, c.name)) for c in self.__table__.columns)
+        if self.createTime:
+            result['createTime'] = self.createTime.strftime("%Y-%m-%d %H:%M")
+        return result
+
+
 class Comment(db.Model):
     __tablename__ = 'comment'
     id          = db.Column(db.Integer, autoincrement=True, nullable=False, primary_key=True)
     userId      = db.Column(db.Integer, db.ForeignKey('user.id'))
-    shareId     = db.Column(db.Integer, db.ForeignKey('machine.id', ondelete="CASCADE"))
+    shareId     = db.Column(db.Integer, db.ForeignKey('share.id', ondelete="CASCADE"))
     content     = db.Column(db.String(200))
     voteFlag    = db.Column(db.Integer, default=0)
     commentTime = db.Column(db.DateTime, default=datetime.datetime.utcnow)

@@ -1,13 +1,15 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, request, jsonify
-from kaka.models import User, Machine, QuanXian
+from kaka.models import User, Machine, QuanXian, Order, Share
 from kaka import db, logger
-from kaka.decorators import verify_request_json, verify_request_token
+from kaka.decorators import verify_request_json, verify_request_token, verify_user_exist
 from webargs import fields
 from webargs.flaskparser import use_args
 from webargs.core import ValidationError
 from kaka.lib import TransmissionTemplateDemo, pushMessageToSingle
-import json
+import json, pprint
+import shortuuid
+from alipay.alipay import *
 
 api_blueprint = Blueprint('api', __name__)
 
@@ -128,5 +130,47 @@ def delMachines(args):
             else:
                 return jsonify({'Status': 'Failed', 'StatusCode': -1, 'Msg': '您是普通用户,无权删除机器{}!'.format(macAddress)}), 400 
     db.session.commit()
-    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200   
-                        
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Msg': '操作成功!'}), 200
+
+@api_blueprint.route('/createOrder',  methods=['POST'])
+@verify_request_json
+@use_args({'UserId'   : fields.Int(required=True),
+           'Token'    : fields.Str(required=True),
+           'ShareId'  : fields.Int(required=True),
+           'Money'   : fields.Float(required=True)},
+          locations = ('json',))
+@verify_request_token
+@verify_user_exist
+def createOrder(args):
+    user  = User.getUserByIdOrPhoneOrMail(id=args.get('UserId', ''), phone=args.get('Phone', ''))
+    order = Order(user.id, args.get('ShareId'), args.get('Money'))
+    share = Share.query.filter_by(id=args.get('ShareId')).first()
+    if not share:
+        return jsonify({'Status': 'Failed', 'StatusCode':-1, 'Msg': "ShareId {} does't exist".format(share.id)}), 400
+    db.session.add(order)
+    db.session.commit()
+    print order.toJson()
+    url = create_partner_trade_by_buyer(order.orderId, share.title, share.address, str(args.get('Money')))
+    orderJson = order.toJson()
+    orderJson['alipayUrl'] = url
+    return jsonify({'Status': 'Success', 'StatusCode': 0, 'Order': orderJson,  'Msg': '操作成功!'}), 200
+
+@api_blueprint.route('/notify_url_handler',  methods=['POST'])
+def notify_url_handler():
+    logger.info ('running notify_url_handler...\n' + pprint.pformat(request.args.to_dict()))
+    if notify_verify(request.args.to_dict()):
+        #商户网站订单号  
+        tn = request.args.get('out_trade_no')
+        logger.info('Change the status of order %s'%tn)
+        #支付宝单号  
+        trade_no=request.args.get('trade_no')  
+        #返回支付状态  
+        trade_status = request.args.get('trade_status') 
+        order = Order.query.get(id=tn)
+        order.status = trade_status
+        db.session.merge(order)
+        db.session.commit()
+        if trade_status == 'TRADE_SUCCESS' or trade_status == 'TRADE_FINISHED':
+            return "success"
+    else:
+        return "fail"                       
